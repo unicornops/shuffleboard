@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.21.2](https://github.com/unicornops/shuffleboard/compare/v0.21.1...v0.21.2) (2026-10-11)
+
+
+### Bug Fixes
+
+* **notifications:** remind about the same cards Deck notifies you about ([#177](https://github.com/unicornops/shuffleboard/issues/177)) ([1bbf4ee](https://github.com/unicornops/shuffleboard/commit/1bbf4ee9451061905d9ed0084f175b7494e2eca4))
+
 ## [0.21.1](https://github.com/unicornops/shuffleboard/compare/v0.21.0...v0.21.1) (2026-10-10)
 
 
