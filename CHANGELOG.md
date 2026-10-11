@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.21.3](https://github.com/unicornops/shuffleboard/compare/v0.21.2...v0.21.3) (2026-10-11)
+
+
+### Bug Fixes
+
+* **keyboard:** stop the toolbar flickering while moving cards ([#179](https://github.com/unicornops/shuffleboard/issues/179)) ([b8ca36c](https://github.com/unicornops/shuffleboard/commit/b8ca36cb44f1c064f407dcff842d189a11472288))
+
 ## [0.21.2](https://github.com/unicornops/shuffleboard/compare/v0.21.1...v0.21.2) (2026-10-11)
 
 
