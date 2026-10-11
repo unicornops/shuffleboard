@@ -1,27 +1,83 @@
 import AppKit
+import Combine
 import SwiftUI
+
+/// What the menu bar commands show and enable, worked out from `AppState`. Kept apart from it so the menu bar only
+/// rebuilds when one of these changes: rebuilt on every change to `AppState` (while dragging cards, say), it made
+/// the window's toolbar flicker.
+struct CommandAvailability: Equatable {
+    struct BoardShortcut: Equatable {
+        let id: Int
+        let title: String
+    }
+
+    var isSignedIn = false
+    /// A board is open and no card's sheet is in front of it.
+    var boardIsOpen = false
+    var boardHasLists = false
+    var cardIsSelected = false
+    var selectedCardIsDone = false
+    var canMoveCard = false
+    var hasBoards = false
+    /// The first nine active boards, for ⌘1 to ⌘9.
+    var boardShortcuts: [BoardShortcut] = []
+
+    @MainActor
+    init(_ appState: AppState? = nil) {
+        guard let appState else { return }
+        self.isSignedIn = appState.isLoggedIn && !appState.showingLogin
+        self.boardIsOpen = isSignedIn && appState.selectedBoard != nil && appState.openedCard == nil
+        self.boardHasLists = !appState.stacks.isEmpty
+        let selectedCard = boardIsOpen ? appState.selectedCard : nil
+        self.cardIsSelected = selectedCard != nil
+        self.selectedCardIsDone = selectedCard?.isDone == true
+        self.canMoveCard = boardIsOpen && appState.canMoveSelectedCard
+        self.hasBoards = !appState.boardsInSidebarOrder.isEmpty
+        self.boardShortcuts = appState.activeBoards.prefix(9).map { BoardShortcut(id: $0.id, title: $0.title) }
+    }
+}
+
+/// Publishes `AppState`'s `CommandAvailability`, only when it changes.
+@MainActor
+final class BoardCommandState: ObservableObject {
+    @Published private(set) var availability = CommandAvailability()
+    private var subscription: AnyCancellable?
+
+    init(appState: AppState) {
+        self.availability = CommandAvailability(appState)
+        // objectWillChange fires before the change, so look once it has been made.
+        self.subscription = appState.objectWillChange
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self, weak appState] _ in
+                MainActor.assumeIsolated {
+                    guard let self, let appState else { return }
+                    let availability = CommandAvailability(appState)
+                    if availability != self.availability {
+                        self.availability = availability
+                    }
+                }
+            }
+    }
+}
 
 /// The menu bar commands for boards, lists and cards (#159). Each has a shortcut, so the common actions don't need
 /// the mouse, and VoiceOver and Full Keyboard Access reach them through the menus. Card commands act on the selected
 /// card, which the arrow keys move around the board.
 struct BoardCommands: Commands {
-    @ObservedObject var appState: AppState
+    /// Not observed: the commands only change with `state`.
+    let appState: AppState
+    @ObservedObject var state: BoardCommandState
 
     private var isSignedIn: Bool {
-        appState.isLoggedIn && !appState.showingLogin
+        state.availability.isSignedIn
     }
 
-    /// A board is open and no card's sheet is in front of it.
     private var boardIsOpen: Bool {
-        isSignedIn && appState.selectedBoard != nil && appState.openedCard == nil
+        state.availability.boardIsOpen
     }
 
     private var cardIsSelected: Bool {
-        boardIsOpen && appState.selectedCard != nil
-    }
-
-    private var canMoveCard: Bool {
-        boardIsOpen && appState.canMoveSelectedCard
+        state.availability.cardIsSelected
     }
 
     var body: some Commands {
@@ -30,7 +86,7 @@ struct BoardCommands: Commands {
                 appState.startNewCard()
             }
             .keyboardShortcut("n")
-            .disabled(!boardIsOpen || appState.stacks.isEmpty)
+            .disabled(!boardIsOpen || !state.availability.boardHasLists)
             Button("New List\u{2026}") {
                 appState.showingNewStack = true
             }
@@ -67,7 +123,7 @@ struct BoardCommands: Commands {
             }
             .keyboardShortcut("o")
             .disabled(!cardIsSelected)
-            Button(appState.selectedCard?.isDone == true ? "Mark as Not Done" : "Mark as Done") {
+            Button(state.availability.selectedCardIsDone ? "Mark as Not Done" : "Mark as Done") {
                 Task { await appState.toggleSelectedCardDone() }
             }
             .keyboardShortcut("c", modifiers: [.command, .shift])
@@ -93,13 +149,13 @@ struct BoardCommands: Commands {
                 appState.selectBoard(offset: -1)
             }
             .keyboardShortcut("[")
-            .disabled(!isSignedIn || appState.boardsInSidebarOrder.isEmpty)
+            .disabled(!isSignedIn || !state.availability.hasBoards)
             Button("Next Board") {
                 appState.selectBoard(offset: 1)
             }
             .keyboardShortcut("]")
-            .disabled(!isSignedIn || appState.boardsInSidebarOrder.isEmpty)
-            ForEach(Array(appState.activeBoards.prefix(9).enumerated()), id: \.element.id) { index, board in
+            .disabled(!isSignedIn || !state.availability.hasBoards)
+            ForEach(Array(state.availability.boardShortcuts.enumerated()), id: \.element.id) { index, board in
                 Button(board.title) {
                     appState.selectedBoardId = board.id
                 }
@@ -115,7 +171,7 @@ struct BoardCommands: Commands {
             Task { await appState.moveSelectedCard(direction) }
         }
         .keyboardShortcut(key, modifiers: [.command, .option])
-        .disabled(!canMoveCard)
+        .disabled(!state.availability.canMoveCard)
     }
 
     /// ⌘⌫ deletes the selected card, except while typing, where it keeps deleting to the start of the line.
