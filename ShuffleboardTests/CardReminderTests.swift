@@ -89,6 +89,47 @@ final class CardReminderTests: XCTestCase {
         XCTAssertTrue(reminders[0].body.hasPrefix("Home \u{203a} To do"))
     }
 
+    /// Due dates follow Deck's own rule: the owner of an unshared board hears about every card on it, and a board
+    /// set to "all" or "off" overrides being assigned.
+    func testDueRemindersFollowTheBoardsDueDateNotificationSetting() throws {
+        func on(_ item: RemindableCard, owner: String? = nil, shared: Bool = false, notifyDue: String? = nil)
+            -> RemindableCard {
+            var board = board
+            board.owner = owner.map { DeckUser(uid: $0) }
+            board.acl = shared
+                ? [ACLEntry(
+                    id: 1,
+                    participant: DeckUser(uid: "bob"),
+                    type: 0,
+                    boardId: 1,
+                    permissionEdit: true,
+                    permissionShare: false,
+                    permissionManage: false,
+                    owner: false
+                )]
+                : []
+            board.settings = notifyDue.map { BoardSettings(notifyDue: $0, calendar: nil) }
+            return RemindableCard(card: item.card, board: board, listTitle: item.listTitle)
+        }
+        let unassigned = try card(1, dueIn: -hour, assignee: nil)
+        let assigned = try card(2, dueIn: -hour)
+        let cases: [(RemindableCard, Bool, String)] = [
+            (on(unassigned, owner: "alice"), true, "own unshared board"),
+            (on(unassigned, owner: "alice", shared: true), false, "own shared board, not assigned"),
+            (on(unassigned, owner: "bob"), false, "someone else's board, not assigned"),
+            (on(unassigned, owner: "bob", notifyDue: "all"), true, "set to all cards"),
+            (on(assigned, owner: "bob", notifyDue: "assigned"), true, "assigned"),
+            (on(assigned, owner: "alice", notifyDue: "off"), false, "turned off"),
+        ]
+        for (item, wanted, why) in cases {
+            XCTAssertEqual(CardReminders.wantsDueReminders(item, userId: "alice"), wanted, why)
+        }
+        let summary = CardReminders.overdueSummary(
+            for: [on(unassigned, owner: "alice")], userId: "alice", accountId: "a", now: start
+        )
+        XCTAssertEqual(summary?.cardId, 1, "the summary uses the same rule")
+    }
+
     func testACardDueWithinADayIsDueSoonNowAndAnOverdueCardIsOnlyOverdue() throws {
         let soon = try CardReminders.dueReminders(
             for: [card(1, dueIn: 5 * hour)],

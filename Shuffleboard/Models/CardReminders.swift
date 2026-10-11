@@ -35,8 +35,9 @@ struct RemindableCard {
     let listTitle: String
 }
 
-/// Which reminders the cards need (#157). Only cards assigned to the signed-in user get them, and only while they're
-/// not done; archived cards and cards on archived boards aren't passed in.
+/// Which reminders the cards need (#157). Due dates follow the same rule as Deck's own overdue notifications (see
+/// `wantsDueReminders`), and only while the card isn't done; archived cards and cards on archived boards aren't
+/// passed in.
 enum CardReminders {
     /// How long before a card's due date the "due soon" reminder is shown.
     static let dueSoonLead: TimeInterval = 24 * 60 * 60
@@ -45,12 +46,30 @@ enum CardReminders {
         card.assignments.contains { $0.type == CardAssignment.userType && $0.participant.uid == userId }
     }
 
-    /// For each undone card assigned to `userId` with a due date: a reminder a day before it's due (or straight away
+    /// Whether `userId` gets reminders for `item`'s due date, as Deck decides for its own notifications: never if the
+    /// board's due date notifications are off, always if they're set to all cards or the board is the user's own and
+    /// not shared, and otherwise (the default, "assigned") when the card is assigned to them.
+    static func wantsDueReminders(_ item: RemindableCard, userId: String) -> Bool {
+        switch item.board.settings?.notifyDue {
+        case "off":
+            false
+
+        case "all":
+            true
+
+        default:
+            (item.board.owner?.uid == userId && item.board.acl.isEmpty) || isAssigned(item.card, to: userId)
+        }
+    }
+
+    /// For each undone card with a due date that `userId` wants reminders for: a reminder a day before it's due (or
+    /// straight away
     /// if that has passed but the card isn't due yet) and one when it's due.
     static func dueReminders(for cards: [RemindableCard], userId: String, accountId: String, now: Date)
         -> [CardReminder] {
         cards.flatMap { item -> [CardReminder] in
-            guard let due = item.card.dueDate, !item.card.isDone, isAssigned(item.card, to: userId) else { return [] }
+            guard let due = item.card.dueDate, !item.card.isDone,
+                  wantsDueReminders(item, userId: userId) else { return [] }
             let soon = CardReminder(
                 kind: .dueSoon,
                 accountId: accountId,
@@ -90,12 +109,12 @@ enum CardReminders {
         )
     }
 
-    /// One notification for every undone card assigned to `userId` that is already overdue, shown when the app
+    /// One notification for every undone card `userId` wants reminders for that is already overdue, shown when the app
     /// starts instead of one per card; nil if none is. It opens the card that has been overdue longest.
     static func overdueSummary(for cards: [RemindableCard], userId: String, accountId: String, now: Date)
         -> CardReminder? {
         let overdue = cards
-            .filter { isAssigned($0.card, to: userId) && $0.card.isOverdue(at: now) }
+            .filter { wantsDueReminders($0, userId: userId) && $0.card.isOverdue(at: now) }
             .sorted { ($0.card.dueDate ?? now) < ($1.card.dueDate ?? now) }
         guard let first = overdue.first else { return nil }
         let title: String
