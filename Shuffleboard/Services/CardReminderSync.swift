@@ -92,7 +92,7 @@ final class CardReminderSync {
         notifications.remove(ids: pending.subtracting(wanted))
         let toAdd = scheduled.filter { !pending.contains($0.id) }
         reminderLogger.notice(
-            "\(cards.count) cards, \(assignedNow.count) assigned to \(userId, privacy: .private): \(toAdd.count) to schedule, \(immediate.count) to show"
+            "\(cards.count) cards, \(assignedNow.count) assigned to \(userId, privacy: .private), \(Set(due.map(\.cardId)).count) with due reminders: \(toAdd.count) to schedule, \(immediate.count) to show"
         )
         var allowed = false
         if !toAdd.isEmpty || !immediate.isEmpty {
