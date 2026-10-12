@@ -277,6 +277,30 @@ final class MainFlowUITests: XCTestCase {
     }
 
     /// Creating, moving, opening, finishing and archiving a card with only the keyboard (#159).
+    /// Settings (#165): ⌘, opens it, and a change sticks when it's opened again. The toggle is flipped back, as
+    /// the app's settings outlive the test.
+    func testChangingASetting() async throws {
+        try await app.launch(on: server, as: [UITestServer.alice])
+        app.typeKey(",", modifierFlags: .command)
+        let toggle = app.element("refresh when activated").waitToAppear("Settings did not open")
+        let original = toggle.value as? Int
+        toggle.click()
+        XCTAssertNotEqual(toggle.value as? Int, original, "The setting did not change")
+
+        app.typeKey("w", modifierFlags: .command)
+        XCTAssertTrue(toggle.waitForNonExistence(timeout: 10), "Settings did not close")
+        app.typeKey(",", modifierFlags: .command)
+        let reopened = app.element("refresh when activated").waitToAppear("Settings did not open again")
+        XCTAssertNotEqual(reopened.value as? Int, original, "The change was not kept")
+
+        app.toolbars.buttons["Notifications"].click()
+        app.element("due date notifications").waitToAppear("No notification settings")
+        app.toolbars.buttons["General"].click()
+        app.element("refresh when activated").waitToAppear().click()
+        XCTAssertEqual(app.element("refresh when activated").value as? Int, original)
+        app.typeKey("w", modifierFlags: .command)
+    }
+
     func testWorkingWithCardsFromTheKeyboard() async throws {
         let board = try await makeBoard()
         let todo = try await alice.createStack(board: board.id, "To do", order: 0)

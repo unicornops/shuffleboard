@@ -95,6 +95,21 @@ extension AppState {
         newCardListId = selectedCard?.stackId ?? stacks.first?.id
     }
 
+    /// Boards that are not archived and not soft-deleted.
+    var activeBoards: [Board] {
+        boards.filter { !$0.archived && !$0.isDeleted }
+    }
+
+    /// Boards that are archived but not soft-deleted.
+    var archivedBoards: [Board] {
+        boards.filter { $0.archived && !$0.isDeleted }
+    }
+
+    /// Soft-deleted boards that can still be restored, most recently deleted first.
+    var deletedBoards: [Board] {
+        boards.filter(\.isDeleted).sorted { ($0.deletedAt ?? 0, $0.id) > ($1.deletedAt ?? 0, $1.id) }
+    }
+
     /// The boards in the order the sidebar lists them.
     var boardsInSidebarOrder: [Board] {
         activeBoards + archivedBoards

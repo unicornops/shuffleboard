@@ -91,32 +91,22 @@ final class AppState: ObservableObject {
         return boards.first { $0.id == id }
     }
 
-    /// Boards that are not archived and not soft-deleted.
-    var activeBoards: [Board] {
-        boards.filter { !$0.archived && !$0.isDeleted }
-    }
-
-    /// Boards that are archived but not soft-deleted.
-    var archivedBoards: [Board] {
-        boards.filter { $0.archived && !$0.isDeleted }
-    }
-
-    /// Soft-deleted boards that can still be restored, most recently deleted first.
-    var deletedBoards: [Board] {
-        boards.filter(\.isDeleted).sorted { ($0.deletedAt ?? 0, $0.id) > ($1.deletedAt ?? 0, $1.id) }
-    }
-
     init(
         credentialStore: CredentialStore = KeychainCredentialStore(),
         session: URLSession = .shared,
         openURL: @escaping @MainActor @Sendable (URL) -> Void = { url in _ = NSWorkspace.shared.open(url) },
-        reminders: CardReminderSync? = nil
+        reminders: CardReminderSync? = nil,
+        launchAccountId: Account.ID? = nil
     ) {
         self.credentialStore = credentialStore
         self.session = session
         self.openURL = openURL
         self.reminders = reminders
         self.savedAccounts = credentialStore.load()
+        // The account chosen in Settings, if it's still signed in; otherwise the one used last.
+        if let launchAccountId {
+            savedAccounts.activate(launchAccountId)
+        }
         self.accounts = savedAccounts.accounts
         if let creds = savedAccounts.active {
             self.credentials = creds

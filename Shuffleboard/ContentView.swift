@@ -17,8 +17,8 @@ struct ContentView: View {
         }
     }
 
-    /// Seconds between background refreshes; each is a 304 with no body when nothing has changed.
-    private static let refreshInterval: Double = 60
+    /// How often to look for changes, from Settings; changing it restarts the refresh loop.
+    @AppStorage(AppSettings.refreshIntervalKey) private var refreshInterval = AppSettings.defaultRefreshInterval
 
     private var mainInterface: some View {
         NavigationSplitView {
@@ -31,19 +31,13 @@ struct ContentView: View {
             await appState.loadBoardsIfNeeded()
             await appState.updateReminders()
         }
-        // Pick up changes made elsewhere: when the app comes back to the front, and every minute while open.
+        // Pick up changes made elsewhere: when the app comes back to the front, and every so often while open
+        // (each check is a 304 with no body when nothing has changed). Both are set in Settings.
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
-            Task {
-                await appState.refreshIfChanged()
-                await appState.updateReminders()
-            }
+            Task { await appState.appDidBecomeActive() }
         }
-        .task {
-            while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(Self.refreshInterval))
-                await appState.refreshIfChanged()
-                await appState.updateReminders()
-            }
+        .task(id: refreshInterval) {
+            await appState.refreshPeriodically()
         }
         .onReceive(CardReminderClicks.shared.$clicked) { clicked in
             guard let clicked else { return }

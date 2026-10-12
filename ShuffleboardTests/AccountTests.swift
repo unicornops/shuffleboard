@@ -97,6 +97,22 @@ final class AccountTests: XCTestCase {
         XCTAssertEqual(store.saved.active?.username, "alice", "remembered for next launch")
     }
 
+    func testOpensTheAccountChosenInSettingsAtLaunch() async throws {
+        let store = InMemoryCredentialStore.signedIn("rob", "alice")
+        let alice = try XCTUnwrap(store.saved.accounts.last)
+        let app = AppState(
+            credentialStore: store, session: StubURLProtocol.session(), openURL: { _ in }, launchAccountId: alice.id
+        )
+        await waitUntil { !app.isLoading && !app.boards.isEmpty }
+        XCTAssertEqual(app.activeAccount?.username, "alice")
+        XCTAssertEqual(app.boards.map(\.id), [7])
+
+        let signedOut = AppState(
+            credentialStore: store, session: StubURLProtocol.session(), openURL: { _ in }, launchAccountId: "gone"
+        )
+        XCTAssertEqual(signedOut.activeAccount?.username, "rob", "an account that signed out: the one used last")
+    }
+
     func testAddingAnAccountKeepsTheOthers() async throws {
         let store = InMemoryCredentialStore.signedIn("rob")
         let app = await makeApp(store)
