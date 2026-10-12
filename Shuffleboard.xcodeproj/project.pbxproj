@@ -47,6 +47,7 @@
 		C10000000000000000000001 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = C30000000000000000000001 /* Sparkle */; };
 		C10000000000000000000002 /* SoftwareUpdater.swift in Sources */ = {isa = PBXBuildFile; fileRef = C40000000000000000000002 /* SoftwareUpdater.swift */; };
 		A10000000000000000000032 /* Comment.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000032 /* Comment.swift */; };
+		A10000000000000000000060 /* Mentions.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000060 /* Mentions.swift */; };
 		A10000000000000000000033 /* CardCommentsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000033 /* CardCommentsView.swift */; };
 		A10000000000000000000034 /* Markdown.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000034 /* Markdown.swift */; };
 		A10000000000000000000035 /* MarkdownView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000035 /* MarkdownView.swift */; };
@@ -61,6 +62,7 @@
 		B1000000000000000000000D /* CardNavigationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000000000000000000000D /* CardNavigationTests.swift */; };
 		B1000000000000000000000E /* CardSearchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000000000000000000000E /* CardSearchTests.swift */; };
 		B10000000000000000000010 /* SettingsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000010 /* SettingsTests.swift */; };
+		B10000000000000000000060 /* MentionsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000060 /* MentionsTests.swift */; };
 		B1000000000000000000000F /* CardReminderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000000000000000000000F /* CardReminderTests.swift */; };
 		A10000000000000000000037 /* ArchivedCardsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000037 /* ArchivedCardsSheet.swift */; };
 		A10000000000000000000038 /* Sharing.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000038 /* Sharing.swift */; };
@@ -140,6 +142,7 @@
 		C40000000000000000000002 /* SoftwareUpdater.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoftwareUpdater.swift; sourceTree = "<group>"; };
 		C40000000000000000000003 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A20000000000000000000032 /* Comment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Comment.swift; sourceTree = "<group>"; };
+		A20000000000000000000060 /* Mentions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Mentions.swift; sourceTree = "<group>"; };
 		A20000000000000000000033 /* CardCommentsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardCommentsView.swift; sourceTree = "<group>"; };
 		A20000000000000000000034 /* Markdown.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Markdown.swift; sourceTree = "<group>"; };
 		A20000000000000000000035 /* MarkdownView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownView.swift; sourceTree = "<group>"; };
@@ -154,6 +157,7 @@
 		B2000000000000000000000D /* CardNavigationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardNavigationTests.swift; sourceTree = "<group>"; };
 		B2000000000000000000000E /* CardSearchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardSearchTests.swift; sourceTree = "<group>"; };
 		B20000000000000000000010 /* SettingsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsTests.swift; sourceTree = "<group>"; };
+		B20000000000000000000060 /* MentionsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MentionsTests.swift; sourceTree = "<group>"; };
 		B2000000000000000000000F /* CardReminderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardReminderTests.swift; sourceTree = "<group>"; };
 		A20000000000000000000037 /* ArchivedCardsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArchivedCardsSheet.swift; sourceTree = "<group>"; };
 		A20000000000000000000038 /* Sharing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sharing.swift; sourceTree = "<group>"; };
@@ -247,6 +251,7 @@
 				A20000000000000000000006 /* Card.swift */,
 				A20000000000000000000007 /* Label.swift */,
 				A20000000000000000000032 /* Comment.swift */,
+				A20000000000000000000060 /* Mentions.swift */,
 				A20000000000000000000034 /* Markdown.swift */,
 				A20000000000000000000036 /* CardFilter.swift */,
 				A20000000000000000000045 /* CardNavigation.swift */,
@@ -323,6 +328,7 @@
 				B2000000000000000000000D /* CardNavigationTests.swift */,
 				B2000000000000000000000E /* CardSearchTests.swift */,
 				B20000000000000000000010 /* SettingsTests.swift */,
+				B20000000000000000000060 /* MentionsTests.swift */,
 				B2000000000000000000000F /* CardReminderTests.swift */,
 				B20000000000000000000008 /* SharingTests.swift */,
 				B20000000000000000000009 /* AccountTests.swift */,
@@ -507,6 +513,7 @@
 				A10000000000000000000006 /* Card.swift in Sources */,
 				A10000000000000000000007 /* Label.swift in Sources */,
 				A10000000000000000000032 /* Comment.swift in Sources */,
+				A10000000000000000000060 /* Mentions.swift in Sources */,
 				A10000000000000000000034 /* Markdown.swift in Sources */,
 				A10000000000000000000036 /* CardFilter.swift in Sources */,
 				A10000000000000000000045 /* CardNavigation.swift in Sources */,
@@ -562,6 +569,7 @@
 				B1000000000000000000000D /* CardNavigationTests.swift in Sources */,
 				B1000000000000000000000E /* CardSearchTests.swift in Sources */,
 				B10000000000000000000010 /* SettingsTests.swift in Sources */,
+				B10000000000000000000060 /* MentionsTests.swift in Sources */,
 				B1000000000000000000000F /* CardReminderTests.swift in Sources */,
 				B10000000000000000000008 /* SharingTests.swift in Sources */,
 				B10000000000000000000009 /* AccountTests.swift in Sources */,

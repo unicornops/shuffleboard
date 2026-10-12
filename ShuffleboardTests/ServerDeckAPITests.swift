@@ -436,6 +436,26 @@ final class ServerDeckAPITests: XCTestCase {
         }
     }
 
+    func testCommentMentioningBob() async throws {
+        try await withTemporaryBoard(api) { board in
+            try await api.addShare(
+                boardId: board.id,
+                type: .user,
+                participant: TestServer.bob,
+                permissions: SharePermissions()
+            )
+            let stack = try await api.createStack(boardId: board.id, title: "To do")
+            let card = try await api.createCard(boardId: board.id, stackId: stack.id, title: "Ask Bob")
+
+            let message = "Can you look, \(Mentions.token(for: TestServer.bob))?"
+            let posted = try await api.addComment(cardId: card.id, message: message)
+            XCTAssertEqual(posted.mentions.map(\.mentionId), [TestServer.bob], "Mention not recorded: \(posted)")
+            XCTAssertEqual(posted.segments.count, 3, "Mention not found in the message: \(posted.segments)")
+            let listed = try await api.getComments(cardId: card.id)
+            XCTAssertEqual(listed.first?.mentions.map(\.mentionId), [TestServer.bob])
+        }
+    }
+
     // MARK: - Sharing
 
     func testSharingWithAPersonAndAGroup() async throws {

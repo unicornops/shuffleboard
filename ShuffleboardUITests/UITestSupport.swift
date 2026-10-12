@@ -136,6 +136,14 @@ struct DeckClient: Sendable {
         ))
     }
 
+    /// Shares `board` with the user `participant`, who may then be assigned and mentioned.
+    func share(board: Int, with participant: String) async throws {
+        _ = try await call("POST", "boards/\(board)/acl", [
+            "type": 0, "participant": participant,
+            "permissionEdit": true, "permissionShare": false, "permissionManage": false,
+        ])
+    }
+
     func createLabel(board: Int, _ title: String, color: String = "FF7A66") async throws -> Int {
         try await Self.id(call("POST", "boards/\(board)/labels", ["title": title, "color": color]))
     }
