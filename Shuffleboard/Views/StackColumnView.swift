@@ -70,11 +70,18 @@ struct StackColumnView: View {
         appState.cardFilter.isActive
     }
 
+    /// Nothing can be changed while the server can't be reached (#156).
+    private var isReadOnly: Bool {
+        appState.isReadOnly
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             header
             cardList
-            addCardField
+            if !isReadOnly {
+                addCardField
+            }
         }
         .frame(width: 280)
         .background(Color(nsColor: .controlBackgroundColor).opacity(0.8))
@@ -113,7 +120,7 @@ struct StackColumnView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .contentShape(Rectangle())
                     .onTapGesture(count: 2) {
-                        if board.canEdit {
+                        if board.canEdit, !isReadOnly {
                             startRenaming()
                         }
                     }
@@ -138,6 +145,7 @@ struct StackColumnView: View {
                     .foregroundStyle(.secondary)
             }
             .menuStyle(.borderlessButton)
+            .disabled(isReadOnly)
             .fixedSize()
             .accessibilityLabel("List actions")
         }
@@ -204,16 +212,16 @@ struct StackColumnView: View {
                     CardRowView(
                         card: currentCards[index],
                         isSelected: appState.selectedCardId == currentCards[index].id,
-                        onDelete: { appState.cardPendingDelete = currentCards[index] },
-                        onToggleDone: {
+                        onDelete: isReadOnly ? nil : { appState.cardPendingDelete = currentCards[index] },
+                        onToggleDone: isReadOnly ? nil : {
                             let card = currentCards[index]
                             Task { await appState.setCardDone(boardId: board.id, card: card, done: !card.isDone) }
                         },
-                        onArchive: {
+                        onArchive: isReadOnly ? nil : {
                             let card = currentCards[index]
                             Task { await appState.archiveCard(card, boardId: board.id) }
                         },
-                        isDraggable: !isFiltering,
+                        isDraggable: !isFiltering && !isReadOnly,
                         // A list drag that was cancelled may have left this set; this drag is a card.
                         onDragStart: { appState.isDraggingStack = false },
                         action: { onSelectCard(currentCards[index]) }

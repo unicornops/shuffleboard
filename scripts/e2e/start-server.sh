@@ -20,6 +20,7 @@
 #                      realistic profile leaves it out by default: its apps decide, as on a real server.
 #   E2E_DIR            working directory, default build/e2e
 #   E2E_PORT           HTTPS port, default 8443
+#   E2E_CADDY_ADMIN_PORT  port of Caddy's admin API on localhost, default 2999 (the UI tests use it)
 #
 # Writes $E2E_DIR/env: the server URL and the test users' names and passwords, as shell variables.
 # Needs php (8.3 or 8.4 with gd, intl, mbstring, pdo_sqlite, xml, zip, curl), caddy, curl, jq and unzip; the
@@ -34,6 +35,8 @@ E2E_PROFILE="${E2E_PROFILE:-minimal}"
 # The port Caddy forwards to: PHP's built-in server, or nginx.
 PHP_PORT="${E2E_PHP_PORT:-8080}"
 DB_PORT="${E2E_DB_PORT:-3307}"
+# Caddy's admin API, on localhost only: the UI tests use it to take the server off the network and back (#156).
+CADDY_ADMIN_PORT="${E2E_CADDY_ADMIN_PORT:-2999}"
 
 case "$E2E_PROFILE" in
     minimal)
@@ -426,7 +429,7 @@ fi
 
 cat >"$E2E_DIR/Caddyfile" <<EOF
 {
-	admin off
+	admin localhost:$CADDY_ADMIN_PORT
 	skip_install_trust
 	storage file_system "$E2E_DIR/caddy"
 	log {
@@ -457,6 +460,7 @@ echo
 
 cat >"$E2E_DIR/env" <<EOF
 E2E_SERVER_URL=$SERVER_URL
+E2E_CADDY_ADMIN=http://localhost:$CADDY_ADMIN_PORT
 E2E_CA_CERT=$CA_CERT
 E2E_ADMIN_PASSWORD=$ADMIN_PASSWORD
 E2E_ALICE_USER=alice

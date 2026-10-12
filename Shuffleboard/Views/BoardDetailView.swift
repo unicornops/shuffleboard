@@ -52,6 +52,13 @@ struct BoardDetailView: View {
                 )
             }
         }
+        .safeAreaInset(edge: .top, spacing: 0) {
+            if let problem = appState.connectionProblem {
+                OfflineBanner(problem: problem, dataDate: appState.offlineDataDate) {
+                    await appState.reconnect()
+                }
+            }
+        }
         .navigationTitle(appState.selectedBoard?.title ?? "Deck")
         .searchable(text: $appState.cardFilter.text, placement: .toolbar, prompt: "Filter cards")
         .searchFocusedIfAvailable($isFilterFocused)
@@ -139,7 +146,7 @@ struct BoardDetailView: View {
                 .frame(width: 16, height: 16)
             Text(board.title)
                 .font(.title2.weight(.semibold))
-            if board.canManage {
+            if board.canManage, !appState.isReadOnly {
                 Button {
                     showingEditBoard = true
                 } label: {
@@ -164,6 +171,7 @@ struct BoardDetailView: View {
             }
             .help(board.acl.isEmpty ? "Share this board" : "Shared with \(board.acl.count)")
             .accessibilityLabel("Sharing")
+            .disabled(appState.isReadOnly)
             if board.canManage {
                 Button {
                     showingLabels = true
@@ -172,6 +180,7 @@ struct BoardDetailView: View {
                 }
                 .help("Edit this board's labels")
                 .accessibilityLabel("Labels")
+                .disabled(appState.isReadOnly)
             }
             Button {
                 appState.showingArchivedCards = true
@@ -180,6 +189,7 @@ struct BoardDetailView: View {
             }
             .help("Archived cards")
             .accessibilityLabel("Archived cards")
+            .disabled(appState.isReadOnly)
             Button {
                 Task { await appState.loadStacks(boardId: board.id) }
             } label: {
@@ -195,6 +205,7 @@ struct BoardDetailView: View {
             }
             .help("Add a new list to this board")
             .accessibilityLabel("Add list")
+            .disabled(appState.isReadOnly)
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 12)
@@ -324,14 +335,8 @@ struct BoardDetailView: View {
                             }
                         )
                         .environmentObject(appState)
-                        .onDrag {
-                            dragLogger.notice("List drag started: list \(stack.id)")
+                        .draggableList(DraggedStack(id: stack.id, index: index), enabled: !appState.isReadOnly) {
                             appState.isDraggingStack = true
-                            return NSItemProvider(
-                                object: NSString(
-                                    string: DraggedStack(id: stack.id, index: index).providerString
-                                )
-                            )
                         }
                         stackInsertionGap(at: index + 1, boardId: board.id)
                     }
@@ -444,6 +449,20 @@ struct BoardDetailView: View {
 }
 
 private extension View {
+    /// Lets the list be dragged to another position, unless `enabled` is false (while the server can't be reached).
+    @ViewBuilder
+    func draggableList(_ list: DraggedStack, enabled: Bool, onStart: @escaping () -> Void) -> some View {
+        if enabled {
+            onDrag {
+                dragLogger.notice("List drag started: list \(list.id)")
+                onStart()
+                return NSItemProvider(object: NSString(string: list.providerString))
+            }
+        } else {
+            self
+        }
+    }
+
     /// Lets ⌘F (Edit > Filter Cards) put the cursor in the filter field; macOS 14 has no way to.
     @ViewBuilder
     func searchFocusedIfAvailable(_ isFocused: FocusState<Bool>.Binding) -> some View {

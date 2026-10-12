@@ -39,6 +39,21 @@ struct ContentView: View {
         .task(id: refreshInterval) {
             await appState.refreshPeriodically()
         }
+        // While the server can't be reached, keep trying (whatever the refresh setting), so editing comes back on
+        // by itself (#156).
+        .task(id: appState.connectionProblem) {
+            while appState.connectionProblem != nil {
+                do {
+                    try await Task.sleep(for: .seconds(15))
+                } catch {
+                    return
+                }
+                await appState.reconnect()
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
+            appState.flushCache()
+        }
         .onReceive(CardReminderClicks.shared.$clicked) { clicked in
             guard let clicked else { return }
             CardReminderClicks.shared.clicked = nil

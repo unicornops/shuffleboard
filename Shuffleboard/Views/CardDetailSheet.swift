@@ -33,6 +33,11 @@ struct CardDetailSheet: View {
     @State private var attachmentError: String?
     @State private var saveError: String?
 
+    /// Nothing can be changed while the server can't be reached (#156).
+    private var isReadOnly: Bool {
+        appState.isReadOnly
+    }
+
     private var board: Board? {
         guard let b = appState.selectedBoard, b.id == boardId else { return nil }
         return b
@@ -78,88 +83,38 @@ struct CardDetailSheet: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Button("Cancel") {
+                Button(isReadOnly ? "Close" : "Cancel") {
                     dismiss()
                     onDismiss()
                 }
                 .keyboardShortcut(.cancelAction)
                 Spacer()
-                Button {
-                    save()
-                } label: {
-                    if isSaving {
-                        ProgressView()
-                            .scaleEffect(0.8)
-                            .frame(minWidth: 44)
-                    } else {
-                        Text("Save")
-                    }
+                if !isReadOnly {
+                    saveButton
                 }
-                .buttonStyle(.borderedProminent)
-                .keyboardShortcut(.return, modifiers: .command)
-                .disabled(isSaving || title.isEmpty || !edits.datesAreInOrder)
             }
             .padding()
             Divider()
 
             Form {
-                if let saveError {
+                if isReadOnly {
                     Section {
-                        Label("Could not save card: \(saveError)", systemImage: "exclamationmark.triangle")
-                            .foregroundStyle(.red)
+                        Label(
+                            "The server can't be reached, so this card can't be changed until it can.",
+                            systemImage: "wifi.slash"
+                        )
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("card read-only notice")
                     }
                 }
-                Section("Title") {
-                    TextField("Title", text: $title)
-                        .accessibilityIdentifier("card title")
-                }
-                Section {
-                    descriptionContent
-                } header: {
-                    HStack {
-                        Text("Description")
-                        Spacer()
-                        Button(isEditingDescription ? "Preview" : "Edit") {
-                            isEditingDescription.toggle()
-                        }
-                        .buttonStyle(.link)
-                    }
-                }
-                Section("Dates") {
-                    scheduleContent
-                }
-                Section("Assigned to") {
-                    assigneesContent
-                }
-                Section("Labels") {
-                    labelsContent
-                }
-                Section("Attachments") {
-                    attachmentsContent
-                }
-                Section("Comments") {
-                    CardCommentsView(card: card)
-                }
-                Section {
-                    Button("Archive card") {
-                        Task {
-                            await appState.archiveCard(currentCard ?? card, boardId: boardId)
-                            dismiss()
-                            onDismiss()
-                        }
-                    }
-                    .help("Hide the card from the board; restore it from Archived Cards")
-                    Button("Delete card", role: .destructive) {
-                        showDeleteConfirmation = true
-                    }
-                }
+                formSections
             }
             .formStyle(.grouped)
             .scrollContentBackground(.hidden)
         }
         .frame(width: 440, height: 660)
         .actionErrorBanner(appState)
-        .navigationTitle("Edit Card")
+        .navigationTitle(isReadOnly ? "Card" : "Edit Card")
         .sheet(isPresented: $showCreateLabel) {
             createLabelSheet
         }
@@ -171,6 +126,8 @@ struct CardDetailSheet: View {
             handleFileImport(result: result)
         }
         .task {
+            // Offline, the card's attachments as listed on the board are all there is.
+            guard !isReadOnly else { return }
             await loadAttachments()
         }
         .confirmationDialog("Delete card?", isPresented: $showDeleteConfirmation) {
@@ -212,6 +169,90 @@ struct CardDetailSheet: View {
         } message: {
             if let attachment = pendingAttachmentDelete {
                 Text(Self.removalMessage(attachment))
+            }
+        }
+    }
+
+    private var saveButton: some View {
+        Button {
+            save()
+        } label: {
+            if isSaving {
+                ProgressView()
+                    .scaleEffect(0.8)
+                    .frame(minWidth: 44)
+            } else {
+                Text("Save")
+            }
+        }
+        .buttonStyle(.borderedProminent)
+        .keyboardShortcut(.return, modifiers: .command)
+        .disabled(isSaving || title.isEmpty || !edits.datesAreInOrder)
+    }
+
+    @ViewBuilder
+    private var formSections: some View {
+        if let saveError {
+            Section {
+                Label("Could not save card: \(saveError)", systemImage: "exclamationmark.triangle")
+                    .foregroundStyle(.red)
+            }
+        }
+        Section("Title") {
+            TextField("Title", text: $title)
+                .accessibilityIdentifier("card title")
+                .disabled(isReadOnly)
+        }
+        Section {
+            descriptionContent
+        } header: {
+            HStack {
+                Text("Description")
+                Spacer()
+                if !isReadOnly {
+                    Button(isEditingDescription ? "Preview" : "Edit") {
+                        isEditingDescription.toggle()
+                    }
+                    .buttonStyle(.link)
+                }
+            }
+        }
+        Section("Dates") {
+            scheduleContent
+                .disabled(isReadOnly)
+        }
+        Section("Assigned to") {
+            assigneesContent
+                .disabled(isReadOnly)
+        }
+        Section("Labels") {
+            labelsContent
+                .disabled(isReadOnly)
+        }
+        Section("Attachments") {
+            attachmentsContent
+                .disabled(isReadOnly)
+        }
+        Section("Comments") {
+            CardCommentsView(card: card)
+        }
+        if !isReadOnly {
+            cardActions
+        }
+    }
+
+    private var cardActions: some View {
+        Section {
+            Button("Archive card") {
+                Task {
+                    await appState.archiveCard(currentCard ?? card, boardId: boardId)
+                    dismiss()
+                    onDismiss()
+                }
+            }
+            .help("Hide the card from the board; restore it from Archived Cards")
+            Button("Delete card", role: .destructive) {
+                showDeleteConfirmation = true
             }
         }
     }
@@ -276,7 +317,7 @@ extension CardDetailSheet {
 
     @ViewBuilder
     private var descriptionContent: some View {
-        if isEditingDescription {
+        if isEditingDescription, !isReadOnly {
             TextEditor(text: $description)
                 .frame(minHeight: 120)
                 .font(.body)
@@ -285,9 +326,9 @@ extension CardDetailSheet {
                 .foregroundStyle(.secondary)
         } else {
             // Ticking a checklist item edits the draft; it's saved with the card.
-            MarkdownView(text: description) { line in
+            MarkdownView(text: description, onToggleTask: isReadOnly ? nil : { line in
                 description = Markdown.togglingTask(atLine: line, in: description)
-            }
+            })
         }
     }
 

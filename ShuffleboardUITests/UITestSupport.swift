@@ -376,3 +376,48 @@ func eventually(
     }
     XCTFail(message, file: file, line: line)
 }
+
+// MARK: - Taking the server away
+
+/// Takes the test server off the network and brings it back (#156), through the admin API of the Caddy in front of
+/// it (see `scripts/e2e/start-server.sh`): while it's away, connections to the server are refused, as when it's down.
+/// Tests that need it are skipped without `E2E_CADDY_ADMIN`.
+struct ServerSwitch: Sendable {
+    let admin: URL
+
+    static func require() throws -> ServerSwitch {
+        guard let value = ProcessInfo.processInfo.environment["E2E_CADDY_ADMIN"], let admin = URL(string: value) else {
+            throw XCTSkip("No E2E_CADDY_ADMIN: restart the server with scripts/e2e/start-server.sh")
+        }
+        return ServerSwitch(admin: admin)
+    }
+
+    /// Stops serving the server, keeping the rest of Caddy's configuration (the admin API among it); returns the
+    /// configuration to pass to `bringBack(_:)`.
+    func takeAway() async throws -> Data {
+        let (config, _) = try await URLSession.shared.data(from: admin.appendingPathComponent("config/"))
+        guard var json = try JSONSerialization.jsonObject(with: config) as? [String: Any],
+              var apps = json["apps"] as? [String: Any] else {
+            throw UITestError("Unexpected Caddy configuration")
+        }
+        apps["http"] = nil
+        json["apps"] = apps
+        try await load(JSONSerialization.data(withJSONObject: json))
+        return config
+    }
+
+    func bringBack(_ config: Data) async throws {
+        try await load(config)
+    }
+
+    private func load(_ config: Data) async throws {
+        var request = URLRequest(url: admin.appendingPathComponent("load"))
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = config
+        let (body, response) = try await URLSession.shared.data(for: request)
+        guard (response as? HTTPURLResponse)?.statusCode == 200 else {
+            throw UITestError("Caddy didn't load the configuration: \(String(decoding: body, as: UTF8.self))")
+        }
+    }
+}
