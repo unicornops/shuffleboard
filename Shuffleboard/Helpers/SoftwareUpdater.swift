@@ -36,6 +36,25 @@ final class SoftwareUpdater: ObservableObject {
     func checkForUpdates() {
         controller.checkForUpdates(nil)
     }
+
+    /// Whether Sparkle checks for updates on its own, once a day; Sparkle keeps the setting (#165).
+    var automaticallyChecksForUpdates: Bool {
+        get { controller.updater.automaticallyChecksForUpdates }
+        set {
+            objectWillChange.send()
+            controller.updater.automaticallyChecksForUpdates = newValue
+        }
+    }
+
+    /// Whether an update found by an automatic check is downloaded and installed when the app quits, rather than
+    /// offered first.
+    var automaticallyDownloadsUpdates: Bool {
+        get { controller.updater.automaticallyDownloadsUpdates }
+        set {
+            objectWillChange.send()
+            controller.updater.automaticallyDownloadsUpdates = newValue
+        }
+    }
 }
 
 // MARK: - Menu item

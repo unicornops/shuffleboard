@@ -43,7 +43,7 @@ struct ShuffleboardApp: App {
             }
         }
         Settings {
-            SettingsView()
+            SettingsView(updater: updater)
                 .environmentObject(appState)
         }
     }

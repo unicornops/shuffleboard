@@ -75,6 +75,9 @@ extension AppState {
             return AppState(credentialStore: UITestCredentialStore(saved))
         }
         #endif
-        return AppState(reminders: CardReminderSync(notifications: SystemReminderNotifications()))
+        return AppState(
+            reminders: CardReminderSync(notifications: SystemReminderNotifications()),
+            launchAccountId: AppSettings.launchAccountId()
+        )
     }
 }

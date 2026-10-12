@@ -12,6 +12,7 @@
 		A10000000000000000000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000002 /* ContentView.swift */; };
 		A10000000000000000000003 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000003 /* AppState.swift */; };
 		A10000000000000000000046 /* AppState+Keyboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000046 /* AppState+Keyboard.swift */; };
+		A10000000000000000000050 /* AppState+Refresh.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000050 /* AppState+Refresh.swift */; };
 		A10000000000000000000004 /* Board.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000004 /* Board.swift */; };
 		A10000000000000000000005 /* Stack.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000005 /* Stack.swift */; };
 		A10000000000000000000006 /* Card.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000006 /* Card.swift */; };
@@ -55,9 +56,11 @@
 		A1000000000000000000004B /* CardReminders.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000004B /* CardReminders.swift */; };
 		A10000000000000000000049 /* BoardCards.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000049 /* BoardCards.swift */; };
 		A10000000000000000000048 /* CardSearch.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000048 /* CardSearch.swift */; };
+		A1000000000000000000004F /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000004F /* AppSettings.swift */; };
 		B10000000000000000000007 /* CardFilterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000007 /* CardFilterTests.swift */; };
 		B1000000000000000000000D /* CardNavigationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000000000000000000000D /* CardNavigationTests.swift */; };
 		B1000000000000000000000E /* CardSearchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000000000000000000000E /* CardSearchTests.swift */; };
+		B10000000000000000000010 /* SettingsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000010 /* SettingsTests.swift */; };
 		B1000000000000000000000F /* CardReminderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000000000000000000000F /* CardReminderTests.swift */; };
 		A10000000000000000000037 /* ArchivedCardsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000037 /* ArchivedCardsSheet.swift */; };
 		A10000000000000000000038 /* Sharing.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000038 /* Sharing.swift */; };
@@ -100,6 +103,7 @@
 		A20000000000000000000002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		A20000000000000000000003 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
 		A20000000000000000000046 /* AppState+Keyboard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppState+Keyboard.swift"; sourceTree = "<group>"; };
+		A20000000000000000000050 /* AppState+Refresh.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppState+Refresh.swift"; sourceTree = "<group>"; };
 		A20000000000000000000004 /* Board.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Board.swift; sourceTree = "<group>"; };
 		A20000000000000000000005 /* Stack.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Stack.swift; sourceTree = "<group>"; };
 		A20000000000000000000006 /* Card.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Card.swift; sourceTree = "<group>"; };
@@ -145,9 +149,11 @@
 		A2000000000000000000004B /* CardReminders.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardReminders.swift; sourceTree = "<group>"; };
 		A20000000000000000000049 /* BoardCards.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardCards.swift; sourceTree = "<group>"; };
 		A20000000000000000000048 /* CardSearch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardSearch.swift; sourceTree = "<group>"; };
+		A2000000000000000000004F /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
 		B20000000000000000000007 /* CardFilterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardFilterTests.swift; sourceTree = "<group>"; };
 		B2000000000000000000000D /* CardNavigationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardNavigationTests.swift; sourceTree = "<group>"; };
 		B2000000000000000000000E /* CardSearchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardSearchTests.swift; sourceTree = "<group>"; };
+		B20000000000000000000010 /* SettingsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsTests.swift; sourceTree = "<group>"; };
 		B2000000000000000000000F /* CardReminderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardReminderTests.swift; sourceTree = "<group>"; };
 		A20000000000000000000037 /* ArchivedCardsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArchivedCardsSheet.swift; sourceTree = "<group>"; };
 		A20000000000000000000038 /* Sharing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sharing.swift; sourceTree = "<group>"; };
@@ -211,6 +217,7 @@
 				A20000000000000000000002 /* ContentView.swift */,
 				A20000000000000000000003 /* AppState.swift */,
 				A20000000000000000000046 /* AppState+Keyboard.swift */,
+				A20000000000000000000050 /* AppState+Refresh.swift */,
 				A40000000000000000000004 /* Models */,
 				A40000000000000000000005 /* Services */,
 				A40000000000000000000006 /* Views */,
@@ -246,6 +253,7 @@
 				A2000000000000000000004B /* CardReminders.swift */,
 				A20000000000000000000049 /* BoardCards.swift */,
 				A20000000000000000000048 /* CardSearch.swift */,
+				A2000000000000000000004F /* AppSettings.swift */,
 				A20000000000000000000038 /* Sharing.swift */,
 				A20000000000000000000040 /* Account.swift */,
 			);
@@ -314,6 +322,7 @@
 				B20000000000000000000007 /* CardFilterTests.swift */,
 				B2000000000000000000000D /* CardNavigationTests.swift */,
 				B2000000000000000000000E /* CardSearchTests.swift */,
+				B20000000000000000000010 /* SettingsTests.swift */,
 				B2000000000000000000000F /* CardReminderTests.swift */,
 				B20000000000000000000008 /* SharingTests.swift */,
 				B20000000000000000000009 /* AccountTests.swift */,
@@ -492,6 +501,7 @@
 				A10000000000000000000002 /* ContentView.swift in Sources */,
 				A10000000000000000000003 /* AppState.swift in Sources */,
 				A10000000000000000000046 /* AppState+Keyboard.swift in Sources */,
+				A10000000000000000000050 /* AppState+Refresh.swift in Sources */,
 				A10000000000000000000004 /* Board.swift in Sources */,
 				A10000000000000000000005 /* Stack.swift in Sources */,
 				A10000000000000000000006 /* Card.swift in Sources */,
@@ -503,6 +513,7 @@
 				A1000000000000000000004B /* CardReminders.swift in Sources */,
 				A10000000000000000000049 /* BoardCards.swift in Sources */,
 				A10000000000000000000048 /* CardSearch.swift in Sources */,
+				A1000000000000000000004F /* AppSettings.swift in Sources */,
 				A10000000000000000000038 /* Sharing.swift in Sources */,
 				A10000000000000000000040 /* Account.swift in Sources */,
 				A10000000000000000000008 /* DeckAPI.swift in Sources */,
@@ -550,6 +561,7 @@
 				B10000000000000000000007 /* CardFilterTests.swift in Sources */,
 				B1000000000000000000000D /* CardNavigationTests.swift in Sources */,
 				B1000000000000000000000E /* CardSearchTests.swift in Sources */,
+				B10000000000000000000010 /* SettingsTests.swift in Sources */,
 				B1000000000000000000000F /* CardReminderTests.swift in Sources */,
 				B10000000000000000000008 /* SharingTests.swift in Sources */,
 				B10000000000000000000009 /* AccountTests.swift in Sources */,
