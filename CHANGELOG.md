@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.21.4](https://github.com/unicornops/shuffleboard/compare/v0.21.3...v0.21.4) (2026-10-12)
+
+
+### Bug Fixes
+
+* **boards:** keep the board's buttons still while lists refresh ([#181](https://github.com/unicornops/shuffleboard/issues/181)) ([dab3398](https://github.com/unicornops/shuffleboard/commit/dab3398a8c320efe451e0a56ae7c1196184710e2))
+
 ## [0.21.3](https://github.com/unicornops/shuffleboard/compare/v0.21.2...v0.21.3) (2026-10-11)
 
 
