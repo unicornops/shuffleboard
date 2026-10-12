@@ -428,10 +428,7 @@ final class MainFlowUITests: XCTestCase {
         let board = try await makeBoard()
         let stack = try await alice.createStack(board: board.id, "To do", order: 0)
         _ = try await alice.createCard(board: board.id, stack: stack, "Still here offline")
-        let cache = FileManager.default.temporaryDirectory
-            .appendingPathComponent("ShuffleboardUITests-\(UUID().uuidString)", isDirectory: true)
-        addTeardownBlock { try? FileManager.default.removeItem(at: cache) }
-        app.launchEnvironment["SHUFFLEBOARD_UITEST_BOARD_CACHE"] = cache.path
+        app.launchEnvironment["SHUFFLEBOARD_UITEST_BOARD_CACHE"] = "fresh"
         try await app.launch(on: server, as: [UITestServer.alice])
         app.openBoard(board.title)
         app.card("Still here offline").waitToAppear()
@@ -453,6 +450,7 @@ final class MainFlowUITests: XCTestCase {
 
         // Opened again with the server still away: the board from the Mac, straight away.
         app.terminate()
+        app.launchEnvironment["SHUFFLEBOARD_UITEST_BOARD_CACHE"] = "keep"
         app.launch()
         app.card("Still here offline").waitToAppear("The saved board isn't shown at launch")
         app.element("offline banner").waitToAppear("No offline banner at launch")
