@@ -421,6 +421,51 @@ final class MainFlowUITests: XCTestCase {
         app.find(.button, "Cancel").click()
     }
 
+    // MARK: - Offline (#156)
+
+    func testKeepsShowingTheBoardReadOnlyWhileTheServerIsAway() async throws {
+        let serverSwitch = try ServerSwitch.require()
+        let board = try await makeBoard()
+        let stack = try await alice.createStack(board: board.id, "To do", order: 0)
+        _ = try await alice.createCard(board: board.id, stack: stack, "Still here offline")
+        let cache = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ShuffleboardUITests-\(UUID().uuidString)", isDirectory: true)
+        addTeardownBlock { try? FileManager.default.removeItem(at: cache) }
+        app.launchEnvironment["SHUFFLEBOARD_UITEST_BOARD_CACHE"] = cache.path
+        try await app.launch(on: server, as: [UITestServer.alice])
+        app.openBoard(board.title)
+        app.card("Still here offline").waitToAppear()
+        app.find(.button, "Add card").waitToAppear("No Add card button while online")
+        // The copy is saved a second after the last change.
+        try await Task.sleep(for: .seconds(2))
+
+        let config = try await serverSwitch.takeAway()
+        addTeardownBlock { try? await serverSwitch.bringBack(config) }
+        app.typeKey("r", modifierFlags: .command)
+        app.element("offline banner").waitToAppear("No offline banner once the server went away")
+        XCTAssertTrue(app.card("Still here offline").exists, "The board is no longer shown")
+        XCTAssertFalse(app.find(.button, "Add card").exists, "Cards can still be added")
+        XCTAssertFalse(app.find(.button, "Add list").isEnabled, "Lists can still be added")
+        app.card("Still here offline").click()
+        app.element("card read-only notice").waitToAppear("The card's sheet doesn't say it's read-only")
+        XCTAssertFalse(app.find(.textField, "card title").isEnabled, "The card's title can still be edited")
+        app.find(.button, "Close").click()
+
+        // Opened again with the server still away: the board from the Mac, straight away.
+        app.terminate()
+        app.launch()
+        app.card("Still here offline").waitToAppear("The saved board isn't shown at launch")
+        app.element("offline banner").waitToAppear("No offline banner at launch")
+
+        try await serverSwitch.bringBack(config)
+        app.find(.button, "Try Again").click()
+        XCTAssertTrue(
+            app.element("offline banner").waitForNonExistence(timeout: 15),
+            "The offline banner stayed once the server was back"
+        )
+        app.find(.button, "Add card").waitToAppear("Editing didn't come back with the server")
+    }
+
     // MARK: - Labels
 
     func testEditingAndDeletingLabels() async throws {

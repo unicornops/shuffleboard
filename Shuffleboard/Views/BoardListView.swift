@@ -50,6 +50,7 @@ struct BoardListView: View {
                     .buttonStyle(.plain)
                     .help("New board")
                     .accessibilityLabel("New board")
+                    .disabled(appState.isReadOnly)
                 }
                 .background(.background)
             }
@@ -153,14 +154,17 @@ struct BoardListView: View {
                     .accessibilityIdentifier("board: \(board.title)")
                     .tag(board.id)
                     .contextMenu {
-                        boardActions(board)
-                        Button("Archive") {
-                            Task { await appState.archiveBoard(id: board.id) }
+                        Group {
+                            boardActions(board)
+                            Button("Archive") {
+                                Task { await appState.archiveBoard(id: board.id) }
+                            }
+                            Divider()
+                            Button("Delete", role: .destructive) {
+                                pendingBoardDelete = board.id
+                            }
                         }
-                        Divider()
-                        Button("Delete", role: .destructive) {
-                            pendingBoardDelete = board.id
-                        }
+                        .disabled(appState.isReadOnly)
                     }
                 }
             }
@@ -178,14 +182,17 @@ struct BoardListView: View {
                     .accessibilityIdentifier("board: \(board.title)")
                     .tag(board.id)
                     .contextMenu {
-                        boardActions(board)
-                        Button("Unarchive") {
-                            Task { await appState.unarchiveBoard(id: board.id) }
+                        Group {
+                            boardActions(board)
+                            Button("Unarchive") {
+                                Task { await appState.unarchiveBoard(id: board.id) }
+                            }
+                            Divider()
+                            Button("Delete", role: .destructive) {
+                                pendingBoardDelete = board.id
+                            }
                         }
-                        Divider()
-                        Button("Delete", role: .destructive) {
-                            pendingBoardDelete = board.id
-                        }
+                        .disabled(appState.isReadOnly)
                     }
                 }
             }
@@ -217,7 +224,7 @@ struct BoardListView: View {
                     HStack {
                         BoardRowView(board: board)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                        if board.canManage {
+                        if board.canManage, !appState.isReadOnly {
                             Button {
                                 Task { await appState.restoreBoard(id: board.id) }
                             } label: {
@@ -232,7 +239,7 @@ struct BoardListView: View {
                     .accessibilityElement(children: .contain)
                     .accessibilityIdentifier("deleted board: \(board.title)")
                     .contextMenu {
-                        if board.canManage {
+                        if board.canManage, !appState.isReadOnly {
                             Button("Restore") {
                                 Task { await appState.restoreBoard(id: board.id) }
                             }

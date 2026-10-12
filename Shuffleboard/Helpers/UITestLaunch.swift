@@ -12,6 +12,8 @@ enum UITestLaunch {
     static let accountsKey = "SHUFFLEBOARD_UITEST_ACCOUNTS"
     /// `light` or `dark`, so screenshots don't depend on the Mac's setting.
     static let appearanceKey = "SHUFFLEBOARD_UITEST_APPEARANCE"
+    /// A folder to keep the copy of the boards in (#156); without it, UI tests keep none.
+    static let boardCacheKey = "SHUFFLEBOARD_UITEST_BOARD_CACHE"
 
     private static var environment: [String: String] {
         ProcessInfo.processInfo.environment
@@ -34,6 +36,11 @@ enum UITestLaunch {
             saved.activate(first.account.id)
         }
         return saved
+    }
+
+    /// The copy of the boards the UI test asked for, if any.
+    static var boardCache: FileBoardCacheStore? {
+        environment[boardCacheKey].map { FileBoardCacheStore(directory: URL(fileURLWithPath: $0, isDirectory: true)) }
     }
 
     /// Applies the appearance the UI test asked for, if any.
@@ -72,12 +79,13 @@ extension AppState {
     static func atLaunch() -> AppState {
         #if DEBUG
         if let saved = UITestLaunch.savedAccounts {
-            return AppState(credentialStore: UITestCredentialStore(saved))
+            return AppState(credentialStore: UITestCredentialStore(saved), boardCache: UITestLaunch.boardCache)
         }
         #endif
         return AppState(
             reminders: CardReminderSync(notifications: SystemReminderNotifications()),
-            launchAccountId: AppSettings.launchAccountId()
+            launchAccountId: AppSettings.launchAccountId(),
+            boardCache: FileBoardCacheStore.standard()
         )
     }
 }

@@ -6,17 +6,30 @@ final class AppState: ObservableObject {
     @Published var isLoggedIn = false
     /// Every signed-in account, in the order they were added; `activeAccount` is the one in use.
     @Published private(set) var accounts: [Account] = []
-    @Published var boards: [Board] = []
+    @Published var boards: [Board] = [] {
+        didSet { recordBoards() }
+    }
+
     @Published var selectedBoardId: Int? {
         didSet {
             if selectedBoardId != oldValue {
                 selectedCardId = nil
                 newCardListId = nil
+                recordSelectedBoard()
             }
         }
     }
 
-    @Published var stacks: [Stack] = []
+    @Published var stacks: [Stack] = [] {
+        didSet {
+            if stacksAreFromServer, let stacksBoardId {
+                recordLists(stacks, boardId: stacksBoardId)
+            }
+        }
+    }
+
+    /// Why the server can't be reached, if it can't (#156). The boards on the Mac are shown read-only meanwhile.
+    @Published private(set) var connectionProblem: ConnectionProblem?
     @Published var isLoading = false
     @Published var isLoadingStacks = false
     /// Errors shown inline where they happen: the login screen, the empty sidebar and the create sheets.
@@ -65,6 +78,16 @@ final class AppState: ObservableObject {
     let reminders: CardReminderSync?
     /// The board `stacks` currently belongs to.
     private var stacksBoardId: Int?
+    /// Whether `stacks` came from the server (and changes made since), rather than from the copy on the Mac.
+    private var stacksAreFromServer = false
+    /// Where the copy of each account's boards is kept (#156); nil in tests that don't use one.
+    let boardCache: BoardCacheStore?
+    /// The copy of the active account's boards, as last saved or about to be; see AppState+Offline.
+    var cacheSnapshot: BoardCacheSnapshot?
+    /// The account `cacheSnapshot` belongs to; nil while nothing is being recorded (switching accounts).
+    var cacheAccountId: Account.ID?
+    /// Saves `cacheSnapshot` shortly after it changes.
+    var cacheWriteTask: Task<Void, Never>?
     /// Incremented by every `loadStacks` call; a response is only applied if no newer load has started.
     private var stacksGeneration = 0
     /// ETags of the last board list and of the lists of the board in `stacksBoardId`, for `refreshIfChanged()`.
@@ -96,12 +119,14 @@ final class AppState: ObservableObject {
         session: URLSession = .shared,
         openURL: @escaping @MainActor @Sendable (URL) -> Void = { url in _ = NSWorkspace.shared.open(url) },
         reminders: CardReminderSync? = nil,
-        launchAccountId: Account.ID? = nil
+        launchAccountId: Account.ID? = nil,
+        boardCache: BoardCacheStore? = nil
     ) {
         self.credentialStore = credentialStore
         self.session = session
         self.openURL = openURL
         self.reminders = reminders
+        self.boardCache = boardCache
         self.savedAccounts = credentialStore.load()
         // The account chosen in Settings, if it's still signed in; otherwise the one used last.
         if let launchAccountId {
@@ -112,6 +137,8 @@ final class AppState: ObservableObject {
             self.credentials = creds
             self.deckAPI = makeAPI(creds)
             self.isLoggedIn = true
+            // The boards on the Mac straight away; then what the server has.
+            restoreFromCache()
             Task { await loadBoards() }
         } else {
             self.showingLogin = true
@@ -171,6 +198,7 @@ final class AppState: ObservableObject {
     /// Shows `error` in the action error banner.
     func report(_ error: Error) {
         guard !endSessionIfUnauthorized(error) else { return }
+        noteConnectionProblem(error)
         actionError = error.localizedDescription
     }
 
@@ -206,6 +234,7 @@ final class AppState: ObservableObject {
     func logout() {
         if let account = activeAccount {
             Task { [reminders] in await reminders?.forget(accountId: account.id) }
+            forgetCache(of: account.id)
             savedAccounts.remove(account.id)
             try? credentialStore.save(savedAccounts)
         }
@@ -234,6 +263,7 @@ final class AppState: ObservableObject {
             boards = fetched.value
             boardsETag = fetched.etag
             boardsETagDate = now()
+            serverWasReached(boardsSyncedAt: now())
             await checkDeckVersion(api)
             if selectedBoardId == nil, let first = activeBoards.first ?? archivedBoards.first {
                 // BoardDetailView's `.task(id: selectedBoardId)` loads the newly selected board's lists.
@@ -243,6 +273,10 @@ final class AppState: ObservableObject {
             }
         } catch {
             guard api === deckAPI, !endSessionIfUnauthorized(error) else { return }
+            // Can't reach the server: the boards on the Mac stay on screen, under the offline banner.
+            if noteConnectionProblem(error), !boards.isEmpty {
+                return
+            }
             errorMessage = error.localizedDescription
             // The sidebar only shows `errorMessage` when there are no boards; a failed refresh needs the banner.
             if !boards.isEmpty {
@@ -267,8 +301,10 @@ final class AppState: ObservableObject {
         stacksGeneration += 1
         let generation = stacksGeneration
         if stacksBoardId != boardId {
-            stacks = []
+            // The board's lists as saved on the Mac, if they were, while the server's are on their way.
+            stacksAreFromServer = false
             stacksBoardId = boardId
+            stacks = cachedLists(of: boardId) ?? []
             stacksFetchDate = nil
         }
         stacksError = nil
@@ -289,13 +325,23 @@ final class AppState: ObservableObject {
         isLoadingStacks = false
         switch result {
         case let .success(loaded):
+            stacksAreFromServer = true
             stacks = Self.sorted(loaded.value)
             stacksETag = loaded.etag
             stacksFetchDate = started
+            serverWasReached()
 
         case let .failure(error):
             stacksFetchDate = nil
             guard !endSessionIfUnauthorized(error) else { return }
+            if noteConnectionProblem(error) {
+                // The saved lists stay on screen under the offline banner; without them, say why there are none.
+                if stacks.isEmpty {
+                    stacksError = "This board's lists haven't been saved on this Mac yet, so they can't be shown "
+                        + "until the server can be reached."
+                }
+                return
+            }
             // A cancelled load (the board view went away) is not an error worth showing.
             if !(error is CancellationError), (error as? URLError)?.code != .cancelled {
                 stacksError = error.localizedDescription
@@ -306,6 +352,7 @@ final class AppState: ObservableObject {
     /// Clears the lists when no board is selected.
     func clearStacks() {
         stacksGeneration += 1
+        stacksAreFromServer = false
         stacks = []
         stacksBoardId = nil
         stacksETag = nil
@@ -321,71 +368,6 @@ final class AppState: ObservableObject {
 
     func refresh() async {
         await loadBoards()
-    }
-
-    func archiveBoard(id: Int) async {
-        guard let api = deckAPI,
-              let board = boards.first(where: { $0.id == id }) else { return }
-        do {
-            _ = try await api.updateBoard(id: id, title: board.title, color: board.color, archived: true)
-            if let idx = boards.firstIndex(where: { $0.id == id }) {
-                boards[idx].archived = true
-            }
-            if selectedBoardId == id {
-                selectedBoardId = activeBoards.first?.id
-            }
-        } catch {
-            report(error)
-        }
-    }
-
-    func unarchiveBoard(id: Int) async {
-        guard let api = deckAPI,
-              let board = boards.first(where: { $0.id == id }) else { return }
-        do {
-            _ = try await api.updateBoard(id: id, title: board.title, color: board.color, archived: false)
-            if let idx = boards.firstIndex(where: { $0.id == id }) {
-                boards[idx].archived = false
-            }
-        } catch {
-            report(error)
-        }
-    }
-
-    /// Renames and recolours a board, keeping its archived state. The sidebar and the board's title change as
-    /// soon as the server confirms. Returns `true` if the board was saved, `false` otherwise (and sets
-    /// `errorMessage`, which the edit sheet shows).
-    func updateBoard(id: Int, title: String, color: String) async -> Bool {
-        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let api = deckAPI, !trimmed.isEmpty,
-              let board = boards.first(where: { $0.id == id }) else { return false }
-        do {
-            let saved = try await api.updateBoard(id: id, title: trimmed, color: color, archived: board.archived)
-            guard api === deckAPI else { return false }
-            if let idx = boards.firstIndex(where: { $0.id == id }) {
-                boards[idx].title = saved.title
-                boards[idx].color = saved.color ?? color
-            }
-            return true
-        } catch {
-            guard !endSessionIfUnauthorized(error) else { return false }
-            errorMessage = error.localizedDescription
-            return false
-        }
-    }
-
-    /// Returns `true` if the board was created successfully, `false` otherwise (and sets `errorMessage`).
-    func createBoard(title: String, color: String) async -> Bool {
-        guard let api = deckAPI else { return false }
-        do {
-            _ = try await api.createBoard(title: title, color: color)
-            await loadBoards()
-            return true
-        } catch {
-            guard !endSessionIfUnauthorized(error) else { return false }
-            errorMessage = error.localizedDescription
-            return false
-        }
     }
 
     /// Returns `true` if the stack was created successfully, `false` otherwise (and sets `errorMessage`).
@@ -511,6 +493,76 @@ final class AppState: ObservableObject {
     }
 }
 
+// MARK: - Boards
+
+@MainActor
+extension AppState {
+    func archiveBoard(id: Int) async {
+        guard let api = deckAPI,
+              let board = boards.first(where: { $0.id == id }) else { return }
+        do {
+            _ = try await api.updateBoard(id: id, title: board.title, color: board.color, archived: true)
+            if let idx = boards.firstIndex(where: { $0.id == id }) {
+                boards[idx].archived = true
+            }
+            if selectedBoardId == id {
+                selectedBoardId = activeBoards.first?.id
+            }
+        } catch {
+            report(error)
+        }
+    }
+
+    func unarchiveBoard(id: Int) async {
+        guard let api = deckAPI,
+              let board = boards.first(where: { $0.id == id }) else { return }
+        do {
+            _ = try await api.updateBoard(id: id, title: board.title, color: board.color, archived: false)
+            if let idx = boards.firstIndex(where: { $0.id == id }) {
+                boards[idx].archived = false
+            }
+        } catch {
+            report(error)
+        }
+    }
+
+    /// Renames and recolours a board, keeping its archived state. The sidebar and the board's title change as
+    /// soon as the server confirms. Returns `true` if the board was saved, `false` otherwise (and sets
+    /// `errorMessage`, which the edit sheet shows).
+    func updateBoard(id: Int, title: String, color: String) async -> Bool {
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let api = deckAPI, !trimmed.isEmpty,
+              let board = boards.first(where: { $0.id == id }) else { return false }
+        do {
+            let saved = try await api.updateBoard(id: id, title: trimmed, color: color, archived: board.archived)
+            guard api === deckAPI else { return false }
+            if let idx = boards.firstIndex(where: { $0.id == id }) {
+                boards[idx].title = saved.title
+                boards[idx].color = saved.color ?? color
+            }
+            return true
+        } catch {
+            guard !endSessionIfUnauthorized(error) else { return false }
+            errorMessage = error.localizedDescription
+            return false
+        }
+    }
+
+    /// Returns `true` if the board was created successfully, `false` otherwise (and sets `errorMessage`).
+    func createBoard(title: String, color: String) async -> Bool {
+        guard let api = deckAPI else { return false }
+        do {
+            _ = try await api.createBoard(title: title, color: color)
+            await loadBoards()
+            return true
+        } catch {
+            guard !endSessionIfUnauthorized(error) else { return false }
+            errorMessage = error.localizedDescription
+            return false
+        }
+    }
+}
+
 // MARK: - Deleting and restoring boards
 
 @MainActor
@@ -613,6 +665,7 @@ extension AppState {
         do {
             let fetched = try await api.fetchBoards(ifNoneMatch: boardsETag)
             guard api === deckAPI else { return }
+            serverWasReached(boardsSyncedAt: now())
             boardsChanged = fetched != nil
             if let fetched {
                 boards = fetched.value
@@ -624,14 +677,15 @@ extension AppState {
                 }
             }
         } catch {
-            if api === deckAPI {
-                endSessionIfUnauthorized(error)
+            if api === deckAPI, !endSessionIfUnauthorized(error) {
+                noteConnectionProblem(error)
             }
             return
         }
 
         guard let boardId = selectedBoardId, stacksBoardId == boardId, !isLoadingStacks else { return }
         if !boardsChanged, stacksETag == nil, listsAreSettled {
+            listsAreCurrent(boardId: boardId)
             return
         }
         let generation = stacksGeneration
@@ -640,6 +694,7 @@ extension AppState {
             guard let fetched = try await api.fetchStacks(boardId: boardId, ifNoneMatch: stacksETag) else { return }
             guard generation == stacksGeneration, selectedBoardId == boardId,
                   !isReorderingStacks, !isDraggingStack else { return }
+            stacksAreFromServer = true
             stacks = Self.sorted(fetched.value)
             stacksETag = fetched.etag
             stacksFetchDate = started
@@ -1173,10 +1228,13 @@ extension AppState {
         accounts = savedAccounts.accounts
         isLoggedIn = true
         showingLogin = false
+        restoreFromCache()
     }
 
     /// Forgets everything shown for the previous account.
     private func resetSession() {
+        stopRecordingCache()
+        connectionProblem = nil
         boards = []
         selectedBoardId = nil
         boardsETag = nil
@@ -1268,7 +1326,9 @@ extension AppState {
     /// What searching finds on `board`: the open board's lists as shown, else the board's cards from `allCards`.
     func searchableCards(of board: Board) -> SearchableCards {
         let cards = allCards[board.id]
-        let stacks = board.id == stacksBoardId && board.id == selectedBoardId ? stacks : cards?.stacks ?? []
+        let stacks = board.id == stacksBoardId && board.id == selectedBoardId
+            ? stacks
+            : cards?.stacks ?? cachedLists(of: board.id) ?? []
         return SearchableCards(stacks: stacks, archivedStacks: cards?.archivedStacks ?? [])
     }
 
@@ -1328,5 +1388,145 @@ extension AppState {
               let card = stacks.lazy.flatMap(\.activeCards).first(where: { $0.id == cardId }) else { return }
         selectedCardId = card.id
         openedCard = card
+    }
+}
+
+// MARK: - The copy on the Mac, and working offline (#156)
+
+/// Each account's boards, and the lists and cards of the boards that were opened, are kept on the Mac (see
+/// `BoardCacheStore`): shown at launch before the server answers, and read-only while it can't be reached.
+@MainActor
+extension AppState {
+    /// Whether changes are turned off because the server can't be reached.
+    var isReadOnly: Bool {
+        connectionProblem != nil
+    }
+
+    /// When what's shown last came from the server: the open board's lists, else the board list.
+    var offlineDataDate: Date? {
+        if let id = selectedBoardId, let lists = cacheSnapshot?.lists[id] {
+            return lists.syncedAt
+        }
+        return cacheSnapshot?.boardsSyncedAt
+    }
+
+    /// `boardId`'s lists as saved on the Mac, in board order; nil if they weren't.
+    func cachedLists(of boardId: Int) -> [Stack]? {
+        cacheSnapshot?.lists[boardId].map { Self.sorted($0.stacks) }
+    }
+
+    /// Shows the active account's boards as saved on the Mac, opening the board that was open, and starts recording
+    /// what the server sends.
+    private func restoreFromCache() {
+        guard let account = activeAccount else { return }
+        let snapshot = boardCache?.load(accountId: account.id) ?? BoardCacheSnapshot()
+        cacheSnapshot = snapshot
+        boards = snapshot.boards
+        if let id = snapshot.selectedBoardId, boards.contains(where: { $0.id == id && !$0.isDeleted }) {
+            selectedBoardId = id
+            stacksBoardId = id
+            stacks = cachedLists(of: id) ?? []
+        }
+        cacheAccountId = account.id
+    }
+
+    private func recordBoards() {
+        guard cacheAccountId != nil else { return }
+        guard var snapshot = cacheSnapshot else { return }
+        let ids = Set(boards.map(\.id))
+        snapshot.boards = boards
+        snapshot.lists = snapshot.lists.filter { ids.contains($0.key) }
+        cacheSnapshot = snapshot
+        scheduleCacheWrite()
+    }
+
+    private func recordSelectedBoard() {
+        guard cacheAccountId != nil else { return }
+        cacheSnapshot?.selectedBoardId = selectedBoardId
+        scheduleCacheWrite()
+    }
+
+    /// Records `boardId`'s lists as current now.
+    private func recordLists(_ stacks: [Stack], boardId: Int) {
+        guard cacheAccountId != nil else { return }
+        cacheSnapshot?.lists[boardId] = BoardCacheSnapshot.Lists(stacks: stacks, syncedAt: now())
+        scheduleCacheWrite()
+    }
+
+    /// The open board's lists were found to be unchanged on the server.
+    private func listsAreCurrent(boardId: Int) {
+        if stacksAreFromServer {
+            recordLists(stacks, boardId: boardId)
+        }
+    }
+
+    /// Saves the copy a second after the last change, so a burst of changes is one write.
+    private func scheduleCacheWrite() {
+        guard boardCache != nil else { return }
+        cacheWriteTask?.cancel()
+        cacheWriteTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(1))
+            guard !Task.isCancelled else { return }
+            self?.flushCache()
+        }
+    }
+
+    /// Saves the copy now, if anything from the server has been recorded.
+    func flushCache() {
+        cacheWriteTask?.cancel()
+        cacheWriteTask = nil
+        guard let cacheAccountId, let cacheSnapshot, cacheSnapshot.boardsSyncedAt != nil else { return }
+        boardCache?.save(cacheSnapshot, accountId: cacheAccountId)
+    }
+
+    /// Saves the copy and stops recording, before switching accounts.
+    private func stopRecordingCache() {
+        flushCache()
+        cacheAccountId = nil
+        cacheSnapshot = nil
+    }
+
+    /// Deletes `accountId`'s copy, when signing out of it.
+    private func forgetCache(of accountId: Account.ID) {
+        if cacheAccountId == accountId {
+            cacheWriteTask?.cancel()
+            cacheWriteTask = nil
+            cacheAccountId = nil
+            cacheSnapshot = nil
+        }
+        boardCache?.remove(accountId: accountId)
+    }
+
+    /// If `error` means the server can't be reached, says so (showing the offline banner) and returns `true`.
+    @discardableResult
+    func noteConnectionProblem(_ error: Error) -> Bool {
+        guard let problem = ConnectionProblem(error) else { return false }
+        if connectionProblem != problem {
+            connectionProblem = problem
+        }
+        return true
+    }
+
+    /// The server answered: editing is back on. With `boardsSyncedAt`, the board list is current as of then.
+    private func serverWasReached(boardsSyncedAt: Date? = nil) {
+        if connectionProblem != nil {
+            connectionProblem = nil
+        }
+        if let boardsSyncedAt, cacheAccountId != nil {
+            cacheSnapshot?.boardsSyncedAt = boardsSyncedAt
+            scheduleCacheWrite()
+        }
+    }
+
+    /// Tries the server again: the offline banner's Try Again, and every so often while it can't be reached.
+    func reconnect() async {
+        if boards.isEmpty {
+            await loadBoards()
+        } else {
+            await refreshIfChanged()
+        }
+        if connectionProblem == nil {
+            await updateReminders()
+        }
     }
 }

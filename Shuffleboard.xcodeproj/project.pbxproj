@@ -19,6 +19,7 @@
 		A10000000000000000000007 /* Label.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000007 /* Label.swift */; };
 		A10000000000000000000008 /* DeckAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000008 /* DeckAPI.swift */; };
 		A10000000000000000000044 /* BoardCopy.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000044 /* BoardCopy.swift */; };
+		A10000000000000000000062 /* BoardCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000062 /* BoardCache.swift */; };
 		A1000000000000000000004D /* SystemReminderNotifications.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000004D /* SystemReminderNotifications.swift */; };
 		A1000000000000000000004C /* CardReminderSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000004C /* CardReminderSync.swift */; };
 		A10000000000000000000009 /* NextcloudAuth.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000009 /* NextcloudAuth.swift */; };
@@ -37,6 +38,7 @@
 		A10000000000000000000014 /* BoardColorPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000014 /* BoardColorPickerView.swift */; };
 		A10000000000000000000015 /* CreateSheetFooter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000015 /* CreateSheetFooter.swift */; };
 		A10000000000000000000030 /* ErrorBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000030 /* ErrorBanner.swift */; };
+		A10000000000000000000063 /* OfflineBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000063 /* OfflineBanner.swift */; };
 		A10000000000000000000031 /* DeleteConfirmation.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000031 /* DeleteConfirmation.swift */; };
 		A10000000000000000000020 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000020 /* Assets.xcassets */; };
 		B10000000000000000000001 /* TestSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000001 /* TestSupport.swift */; };
@@ -53,6 +55,7 @@
 		A10000000000000000000035 /* MarkdownView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000035 /* MarkdownView.swift */; };
 		B10000000000000000000006 /* MarkdownTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000006 /* MarkdownTests.swift */; };
 		A10000000000000000000036 /* CardFilter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000036 /* CardFilter.swift */; };
+		A10000000000000000000061 /* ConnectionProblem.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000061 /* ConnectionProblem.swift */; };
 		A10000000000000000000045 /* CardNavigation.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000045 /* CardNavigation.swift */; };
 		A1000000000000000000004B /* CardReminders.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000004B /* CardReminders.swift */; };
 		A10000000000000000000049 /* BoardCards.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000049 /* BoardCards.swift */; };
@@ -62,6 +65,7 @@
 		B1000000000000000000000D /* CardNavigationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000000000000000000000D /* CardNavigationTests.swift */; };
 		B1000000000000000000000E /* CardSearchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000000000000000000000E /* CardSearchTests.swift */; };
 		B10000000000000000000010 /* SettingsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000010 /* SettingsTests.swift */; };
+		B10000000000000000000061 /* OfflineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000061 /* OfflineTests.swift */; };
 		B10000000000000000000060 /* MentionsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000060 /* MentionsTests.swift */; };
 		B1000000000000000000000F /* CardReminderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000000000000000000000F /* CardReminderTests.swift */; };
 		A10000000000000000000037 /* ArchivedCardsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000037 /* ArchivedCardsSheet.swift */; };
@@ -112,6 +116,7 @@
 		A20000000000000000000007 /* Label.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Label.swift; sourceTree = "<group>"; };
 		A20000000000000000000008 /* DeckAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeckAPI.swift; sourceTree = "<group>"; };
 		A20000000000000000000044 /* BoardCopy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardCopy.swift; sourceTree = "<group>"; };
+		A20000000000000000000062 /* BoardCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardCache.swift; sourceTree = "<group>"; };
 		A2000000000000000000004D /* SystemReminderNotifications.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemReminderNotifications.swift; sourceTree = "<group>"; };
 		A2000000000000000000004C /* CardReminderSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardReminderSync.swift; sourceTree = "<group>"; };
 		A20000000000000000000009 /* NextcloudAuth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NextcloudAuth.swift; sourceTree = "<group>"; };
@@ -130,6 +135,7 @@
 		A20000000000000000000014 /* BoardColorPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardColorPickerView.swift; sourceTree = "<group>"; };
 		A20000000000000000000015 /* CreateSheetFooter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateSheetFooter.swift; sourceTree = "<group>"; };
 		A20000000000000000000030 /* ErrorBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ErrorBanner.swift; sourceTree = "<group>"; };
+		A20000000000000000000063 /* OfflineBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineBanner.swift; sourceTree = "<group>"; };
 		A20000000000000000000031 /* DeleteConfirmation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeleteConfirmation.swift; sourceTree = "<group>"; };
 		A20000000000000000000020 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A20000000000000000000021 /* Shuffleboard.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Shuffleboard.entitlements; sourceTree = "<group>"; };
@@ -148,6 +154,7 @@
 		A20000000000000000000035 /* MarkdownView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownView.swift; sourceTree = "<group>"; };
 		B20000000000000000000006 /* MarkdownTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownTests.swift; sourceTree = "<group>"; };
 		A20000000000000000000036 /* CardFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardFilter.swift; sourceTree = "<group>"; };
+		A20000000000000000000061 /* ConnectionProblem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionProblem.swift; sourceTree = "<group>"; };
 		A20000000000000000000045 /* CardNavigation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardNavigation.swift; sourceTree = "<group>"; };
 		A2000000000000000000004B /* CardReminders.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardReminders.swift; sourceTree = "<group>"; };
 		A20000000000000000000049 /* BoardCards.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardCards.swift; sourceTree = "<group>"; };
@@ -157,6 +164,7 @@
 		B2000000000000000000000D /* CardNavigationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardNavigationTests.swift; sourceTree = "<group>"; };
 		B2000000000000000000000E /* CardSearchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardSearchTests.swift; sourceTree = "<group>"; };
 		B20000000000000000000010 /* SettingsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsTests.swift; sourceTree = "<group>"; };
+		B20000000000000000000061 /* OfflineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineTests.swift; sourceTree = "<group>"; };
 		B20000000000000000000060 /* MentionsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MentionsTests.swift; sourceTree = "<group>"; };
 		B2000000000000000000000F /* CardReminderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardReminderTests.swift; sourceTree = "<group>"; };
 		A20000000000000000000037 /* ArchivedCardsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArchivedCardsSheet.swift; sourceTree = "<group>"; };
@@ -254,6 +262,7 @@
 				A20000000000000000000060 /* Mentions.swift */,
 				A20000000000000000000034 /* Markdown.swift */,
 				A20000000000000000000036 /* CardFilter.swift */,
+				A20000000000000000000061 /* ConnectionProblem.swift */,
 				A20000000000000000000045 /* CardNavigation.swift */,
 				A2000000000000000000004B /* CardReminders.swift */,
 				A20000000000000000000049 /* BoardCards.swift */,
@@ -270,6 +279,7 @@
 			children = (
 				A20000000000000000000008 /* DeckAPI.swift */,
 				A20000000000000000000044 /* BoardCopy.swift */,
+				A20000000000000000000062 /* BoardCache.swift */,
 				A2000000000000000000004D /* SystemReminderNotifications.swift */,
 				A2000000000000000000004C /* CardReminderSync.swift */,
 				A20000000000000000000009 /* NextcloudAuth.swift */,
@@ -307,6 +317,7 @@
 				A20000000000000000000014 /* BoardColorPickerView.swift */,
 				A20000000000000000000015 /* CreateSheetFooter.swift */,
 				A20000000000000000000030 /* ErrorBanner.swift */,
+				A20000000000000000000063 /* OfflineBanner.swift */,
 				A20000000000000000000031 /* DeleteConfirmation.swift */,
 				A20000000000000000000041 /* DroppedText.swift */,
 				A20000000000000000000042 /* UITestLaunch.swift */,
@@ -328,6 +339,7 @@
 				B2000000000000000000000D /* CardNavigationTests.swift */,
 				B2000000000000000000000E /* CardSearchTests.swift */,
 				B20000000000000000000010 /* SettingsTests.swift */,
+				B20000000000000000000061 /* OfflineTests.swift */,
 				B20000000000000000000060 /* MentionsTests.swift */,
 				B2000000000000000000000F /* CardReminderTests.swift */,
 				B20000000000000000000008 /* SharingTests.swift */,
@@ -516,6 +528,7 @@
 				A10000000000000000000060 /* Mentions.swift in Sources */,
 				A10000000000000000000034 /* Markdown.swift in Sources */,
 				A10000000000000000000036 /* CardFilter.swift in Sources */,
+				A10000000000000000000061 /* ConnectionProblem.swift in Sources */,
 				A10000000000000000000045 /* CardNavigation.swift in Sources */,
 				A1000000000000000000004B /* CardReminders.swift in Sources */,
 				A10000000000000000000049 /* BoardCards.swift in Sources */,
@@ -525,6 +538,7 @@
 				A10000000000000000000040 /* Account.swift in Sources */,
 				A10000000000000000000008 /* DeckAPI.swift in Sources */,
 				A10000000000000000000044 /* BoardCopy.swift in Sources */,
+				A10000000000000000000062 /* BoardCache.swift in Sources */,
 				A1000000000000000000004D /* SystemReminderNotifications.swift in Sources */,
 				A1000000000000000000004C /* CardReminderSync.swift in Sources */,
 				A10000000000000000000009 /* NextcloudAuth.swift in Sources */,
@@ -548,6 +562,7 @@
 				A10000000000000000000014 /* BoardColorPickerView.swift in Sources */,
 				A10000000000000000000015 /* CreateSheetFooter.swift in Sources */,
 				A10000000000000000000030 /* ErrorBanner.swift in Sources */,
+				A10000000000000000000063 /* OfflineBanner.swift in Sources */,
 				A10000000000000000000031 /* DeleteConfirmation.swift in Sources */,
 				A10000000000000000000041 /* DroppedText.swift in Sources */,
 				A10000000000000000000042 /* UITestLaunch.swift in Sources */,
@@ -569,6 +584,7 @@
 				B1000000000000000000000D /* CardNavigationTests.swift in Sources */,
 				B1000000000000000000000E /* CardSearchTests.swift in Sources */,
 				B10000000000000000000010 /* SettingsTests.swift in Sources */,
+				B10000000000000000000061 /* OfflineTests.swift in Sources */,
 				B10000000000000000000060 /* MentionsTests.swift in Sources */,
 				B1000000000000000000000F /* CardReminderTests.swift in Sources */,
 				B10000000000000000000008 /* SharingTests.swift in Sources */,

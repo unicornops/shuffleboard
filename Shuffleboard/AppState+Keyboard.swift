@@ -29,9 +29,14 @@ extension AppState {
     }
 
     /// Whether the selected card can be moved: not while filtering, as with dragging, since a card's position
-    /// counts the cards the filter hides.
+    /// counts the cards the filter hides, nor while the server can't be reached.
     var canMoveSelectedCard: Bool {
-        selectedCard != nil && !cardFilter.isActive
+        selectedCard != nil && !cardFilter.isActive && !isReadOnly
+    }
+
+    /// Whether the selected card can be changed (marked done, archived, deleted).
+    var canChangeSelectedCard: Bool {
+        selectedCard != nil && !isReadOnly
     }
 
     /// Moves the selected card up or down its list, or to the list on either side; it stays selected.
@@ -48,13 +53,13 @@ extension AppState {
     }
 
     func toggleSelectedCardDone() async {
-        guard let boardId = selectedBoardId, let card = selectedCard else { return }
+        guard canChangeSelectedCard, let boardId = selectedBoardId, let card = selectedCard else { return }
         await setCardDone(boardId: boardId, card: card, done: !card.isDone)
     }
 
     /// Archives the selected card and selects the one after it (or before it, at the end of the list).
     func archiveSelectedCard() async {
-        guard let boardId = selectedBoardId, let card = selectedCard else { return }
+        guard canChangeSelectedCard, let boardId = selectedBoardId, let card = selectedCard else { return }
         let next = cardAfterRemoving(card)
         await archiveCard(card, boardId: boardId)
         if selectedCardId == card.id, selectedBoardId == boardId, selectedCard == nil {
@@ -64,6 +69,7 @@ extension AppState {
 
     /// Asks to delete the selected card; `deletePendingCard()` deletes it once confirmed.
     func requestDeletingSelectedCard() {
+        guard canChangeSelectedCard else { return }
         cardPendingDelete = selectedCard
     }
 
@@ -92,6 +98,7 @@ extension AppState {
 
     /// Shows the "new card" field in the selected card's list, or else the first list.
     func startNewCard() {
+        guard !isReadOnly else { return }
         newCardListId = selectedCard?.stackId ?? stacks.first?.id
     }
 

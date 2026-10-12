@@ -221,3 +221,28 @@ func waitUntil(
 func sleep(seconds: TimeInterval) async {
     try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
 }
+
+// MARK: - Board cache
+
+/// Keeps the copy of the boards in memory (#156).
+final class InMemoryBoardCacheStore: BoardCacheStore {
+    var snapshots: [Account.ID: BoardCacheSnapshot] = [:]
+    private(set) var saveCount = 0
+
+    init(_ snapshots: [Account.ID: BoardCacheSnapshot] = [:]) {
+        self.snapshots = snapshots
+    }
+
+    func load(accountId: Account.ID) -> BoardCacheSnapshot? {
+        snapshots[accountId]
+    }
+
+    func save(_ snapshot: BoardCacheSnapshot, accountId: Account.ID) {
+        saveCount += 1
+        snapshots[accountId] = snapshot
+    }
+
+    func remove(accountId: Account.ID) {
+        snapshots[accountId] = nil
+    }
+}

@@ -32,6 +32,11 @@ struct CardCommentsView: View {
             if isLoading && comments.isEmpty {
                 ProgressView()
                     .controlSize(.small)
+            } else if comments.isEmpty, appState.isReadOnly {
+                // Comments aren't kept on the Mac (#156).
+                Text("Comments can't be shown until the server can be reached.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
             } else if comments.isEmpty {
                 Text("No comments yet")
                     .font(.subheadline)
@@ -40,9 +45,13 @@ struct CardCommentsView: View {
             ForEach(comments) { comment in
                 commentRow(comment)
             }
-            composer
+            if !appState.isReadOnly {
+                composer
+            }
         }
-        .task(id: card.id) {
+        // Loaded again when the server can be reached again.
+        .task(id: "\(card.id) \(appState.isReadOnly)") {
+            guard !appState.isReadOnly else { return }
             comments = []
             await loadPage(offset: 0)
         }
@@ -83,7 +92,7 @@ struct CardCommentsView: View {
                             .help(date.formatted(date: .abbreviated, time: .shortened))
                     }
                     Spacer()
-                    if isOwn(comment), editingId != comment.id {
+                    if isOwn(comment), editingId != comment.id, !appState.isReadOnly {
                         ownCommentMenu(comment)
                     }
                 }

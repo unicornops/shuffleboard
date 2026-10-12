@@ -18,6 +18,10 @@ struct CommandAvailability: Equatable {
     var cardIsSelected = false
     var selectedCardIsDone = false
     var canMoveCard = false
+    /// The selected card can be marked done, archived or deleted.
+    var canChangeCard = false
+    /// The server can't be reached, so nothing can be changed (#156).
+    var isReadOnly = false
     var hasBoards = false
     /// The first nine active boards, for ⌘1 to ⌘9.
     var boardShortcuts: [BoardShortcut] = []
@@ -32,6 +36,8 @@ struct CommandAvailability: Equatable {
         self.cardIsSelected = selectedCard != nil
         self.selectedCardIsDone = selectedCard?.isDone == true
         self.canMoveCard = boardIsOpen && appState.canMoveSelectedCard
+        self.canChangeCard = boardIsOpen && appState.canChangeSelectedCard
+        self.isReadOnly = appState.isReadOnly
         self.hasBoards = !appState.boardsInSidebarOrder.isEmpty
         self.boardShortcuts = appState.activeBoards.prefix(9).map { BoardShortcut(id: $0.id, title: $0.title) }
     }
@@ -80,23 +86,27 @@ struct BoardCommands: Commands {
         state.availability.cardIsSelected
     }
 
+    private var isReadOnly: Bool {
+        state.availability.isReadOnly
+    }
+
     var body: some Commands {
         CommandGroup(replacing: .newItem) {
             Button("New Card") {
                 appState.startNewCard()
             }
             .keyboardShortcut("n")
-            .disabled(!boardIsOpen || !state.availability.boardHasLists)
+            .disabled(!boardIsOpen || !state.availability.boardHasLists || isReadOnly)
             Button("New List\u{2026}") {
                 appState.showingNewStack = true
             }
             .keyboardShortcut("n", modifiers: [.command, .shift])
-            .disabled(!boardIsOpen)
+            .disabled(!boardIsOpen || isReadOnly)
             Button("New Board\u{2026}") {
                 appState.showingNewBoard = true
             }
             .keyboardShortcut("n", modifiers: [.command, .option])
-            .disabled(!isSignedIn)
+            .disabled(!isSignedIn || isReadOnly)
             Divider()
             Button("Refresh") {
                 Task { await appState.refresh() }
@@ -127,17 +137,17 @@ struct BoardCommands: Commands {
                 Task { await appState.toggleSelectedCardDone() }
             }
             .keyboardShortcut("c", modifiers: [.command, .shift])
-            .disabled(!cardIsSelected)
+            .disabled(!state.availability.canChangeCard)
             Button("Archive Card") {
                 Task { await appState.archiveSelectedCard() }
             }
             .keyboardShortcut("a", modifiers: [.command, .control])
-            .disabled(!cardIsSelected)
+            .disabled(!state.availability.canChangeCard)
             Button("Delete Card\u{2026}") {
                 deleteCardOrText()
             }
             .keyboardShortcut(.delete)
-            .disabled(!cardIsSelected)
+            .disabled(!state.availability.canChangeCard)
             Divider()
             moveButton("Move Up", .up, key: .upArrow)
             moveButton("Move Down", .down, key: .downArrow)
