@@ -399,6 +399,28 @@ final class MainFlowUITests: XCTestCase {
         app.find(.button, "Cancel").click()
     }
 
+    /// @mentions (#163): typing "@" in a comment suggests the board's members; picking one writes the mention, which
+    /// is shown by name once posted.
+    func testMentioningSomeoneInAComment() async throws {
+        let board = try await makeBoard()
+        try await alice.share(board: board.id, with: UITestServer.bob)
+        let stack = try await alice.createStack(board: board.id, "To do", order: 0)
+        _ = try await alice.createCard(board: board.id, stack: stack, "Needs Bob")
+        try await app.launch(on: server, as: [UITestServer.alice])
+        app.openBoard(board.title)
+
+        app.card("Needs Bob").waitToAppear().click()
+        let composer = app.find(.textField, "new comment").waitToAppear("No comment field on the card")
+        composer.click()
+        composer.typeText("Over to @bo")
+        app.element("mention \(UITestServer.bob)").waitToAppear("Bob not suggested").click()
+        XCTAssertEqual(composer.value as? String, "Over to @\(UITestServer.bob) ")
+        composer.typeText("now")
+        app.find(.button, "Comment").click()
+        app.staticTexts["Over to @Bob Example now"].waitToAppear("The mention is not shown by name")
+        app.find(.button, "Cancel").click()
+    }
+
     // MARK: - Labels
 
     func testEditingAndDeletingLabels() async throws {

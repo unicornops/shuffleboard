@@ -11,13 +11,23 @@ struct CardComment: Decodable, Identifiable, Hashable, Sendable {
     let actorDisplayName: String
     /// ISO-8601, e.g. `2020-03-10T10:23:07+00:00`.
     let creationDateTime: String
+    /// The people the message mentions (#163), as the server found them.
+    let mentions: [CommentMention]
 
-    init(id: Int, message: String, actorId: String, actorDisplayName: String, creationDateTime: String) {
+    init(
+        id: Int,
+        message: String,
+        actorId: String,
+        actorDisplayName: String,
+        creationDateTime: String,
+        mentions: [CommentMention] = []
+    ) {
         self.id = id
         self.message = message
         self.actorId = actorId
         self.actorDisplayName = actorDisplayName
         self.creationDateTime = creationDateTime
+        self.mentions = mentions
     }
 
     init(from decoder: Decoder) throws {
@@ -27,10 +37,16 @@ struct CardComment: Decodable, Identifiable, Hashable, Sendable {
         self.actorId = try c.decodeIfPresent(String.self, forKey: .actorId) ?? ""
         self.actorDisplayName = try c.decodeIfPresent(String.self, forKey: .actorDisplayName) ?? ""
         self.creationDateTime = try c.decodeIfPresent(String.self, forKey: .creationDateTime) ?? ""
+        self.mentions = try c.decodeIfPresent([CommentMention].self, forKey: .mentions) ?? []
     }
 
     enum CodingKeys: String, CodingKey {
-        case id, message, actorId, actorDisplayName, creationDateTime
+        case id, message, actorId, actorDisplayName, creationDateTime, mentions
+    }
+
+    /// The message split into text and mentions, to show mentions by name.
+    var segments: [Mentions.Segment] {
+        Mentions.segments(of: message, mentions: mentions)
     }
 
     /// The most characters Deck accepts in a comment.

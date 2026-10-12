@@ -90,7 +90,7 @@ struct CardCommentsView: View {
                 if editingId == comment.id {
                     editor(for: comment)
                 } else {
-                    Text(comment.message)
+                    Text(Self.message(comment))
                         .textSelection(.enabled)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -119,9 +119,7 @@ struct CardCommentsView: View {
 
     private func editor(for comment: CardComment) -> some View {
         VStack(alignment: .trailing, spacing: 6) {
-            TextField("Comment", text: $editDraft, axis: .vertical)
-                .lineLimit(1 ... 6)
-                .textFieldStyle(.roundedBorder)
+            MentionField(placeholder: "Comment", text: $editDraft, people: mentionable)
             HStack {
                 characterCount(editDraft)
                 Spacer()
@@ -140,10 +138,7 @@ struct CardCommentsView: View {
 
     private var composer: some View {
         VStack(alignment: .trailing, spacing: 6) {
-            TextField("Add a comment…", text: $draft, axis: .vertical)
-                .lineLimit(1 ... 6)
-                .textFieldStyle(.roundedBorder)
-                .accessibilityIdentifier("new comment")
+            MentionField(placeholder: "Add a comment…", text: $draft, people: mentionable, identifier: "new comment")
             HStack {
                 characterCount(draft)
                 Spacer()
@@ -168,6 +163,29 @@ struct CardCommentsView: View {
             Text("\(text.count)/\(CardComment.maximumLength)")
                 .font(.caption)
                 .foregroundStyle(text.count > CardComment.maximumLength ? .red : .secondary)
+        }
+    }
+
+    // MARK: - Mentions
+
+    /// The people a comment can mention (#163): the board's members, other than the user.
+    private var mentionable: [DeckUser] {
+        (appState.selectedBoard?.assignableUsers ?? []).filter { $0.uid != appState.currentUserId }
+    }
+
+    /// The comment's message with mentions shown by name, in bold and the accent colour.
+    private static func message(_ comment: CardComment) -> AttributedString {
+        comment.segments.reduce(into: AttributedString()) { result, segment in
+            switch segment {
+            case let .text(text):
+                result += AttributedString(text)
+
+            case let .mention(mention):
+                var name = AttributedString("@\(mention.mentionDisplayName)")
+                name.inlinePresentationIntent = .stronglyEmphasized
+                name.foregroundColor = .accentColor
+                result += name
+            }
         }
     }
 
@@ -209,5 +227,87 @@ struct CardCommentsView: View {
         if await appState.deleteComment(comment, from: card) {
             comments.removeAll { $0.id == comment.id }
         }
+    }
+}
+
+// MARK: - MentionField
+
+/// A comment field that, after an "@", suggests people to mention (#163): click one, or pick it with the arrow keys
+/// and Return or Tab, to write their mention.
+private struct MentionField: View {
+    let placeholder: String
+    @Binding var text: String
+    let people: [DeckUser]
+    /// The text field's accessibility identifier; the placeholder if nil.
+    var identifier: String?
+    @State private var highlighted = 0
+
+    private var suggestions: [DeckUser] {
+        guard let query = Mentions.query(in: text) else { return [] }
+        return Mentions.suggestions(for: query, from: people)
+    }
+
+    var body: some View {
+        let suggestions = suggestions
+        VStack(alignment: .leading, spacing: 4) {
+            TextField(placeholder, text: $text, axis: .vertical)
+                .lineLimit(1 ... 6)
+                .textFieldStyle(.roundedBorder)
+                .accessibilityIdentifier(identifier ?? placeholder)
+                .onKeyPress(.downArrow) { move(1, in: suggestions) }
+                .onKeyPress(.upArrow) { move(-1, in: suggestions) }
+                .onKeyPress(.return) { pick(from: suggestions) }
+                .onKeyPress(.tab) { pick(from: suggestions) }
+                .onChange(of: text) { highlighted = 0 }
+            if !suggestions.isEmpty {
+                suggestionList(suggestions)
+            }
+        }
+    }
+
+    private func suggestionList(_ suggestions: [DeckUser]) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            ForEach(Array(suggestions.enumerated()), id: \.element.uid) { index, user in
+                Button {
+                    text = Mentions.completing(text, with: user)
+                } label: {
+                    HStack(spacing: 6) {
+                        AvatarBadge(user: user, size: 18)
+                        Text(user.displayName)
+                        if user.displayName != user.uid {
+                            Text(user.uid)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                    }
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 3)
+                    .background(
+                        index == highlighted ? Color.accentColor.opacity(0.2) : Color.clear,
+                        in: RoundedRectangle(cornerRadius: 4)
+                    )
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("mention \(user.uid)")
+            }
+        }
+        .padding(4)
+        .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 6))
+        .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(.separator))
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("People to mention")
+    }
+
+    private func move(_ step: Int, in suggestions: [DeckUser]) -> KeyPress.Result {
+        guard !suggestions.isEmpty else { return .ignored }
+        highlighted = min(max(highlighted + step, 0), suggestions.count - 1)
+        return .handled
+    }
+
+    private func pick(from suggestions: [DeckUser]) -> KeyPress.Result {
+        guard suggestions.indices.contains(highlighted) else { return .ignored }
+        text = Mentions.completing(text, with: suggestions[highlighted])
+        return .handled
     }
 }
