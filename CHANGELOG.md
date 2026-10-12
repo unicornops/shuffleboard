@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.22.0](https://github.com/unicornops/shuffleboard/compare/v0.21.4...v0.22.0) (2026-10-12)
+
+
+### Features
+
+* **comments:** [@mention](https://github.com/mention) people in comments ([#184](https://github.com/unicornops/shuffleboard/issues/184)) ([6580733](https://github.com/unicornops/shuffleboard/commit/65807334f1834ac9dc6ba0f076faa6e5399bd864)), closes [#163](https://github.com/unicornops/shuffleboard/issues/163)
+* **settings:** a Settings window for refreshing, launch account and updates ([#183](https://github.com/unicornops/shuffleboard/issues/183)) ([0a5f851](https://github.com/unicornops/shuffleboard/commit/0a5f851ec3c18b76379142e7fb5170ae12c05794)), closes [#165](https://github.com/unicornops/shuffleboard/issues/165)
+
 ## [0.21.4](https://github.com/unicornops/shuffleboard/compare/v0.21.3...v0.21.4) (2026-10-12)
 
 
