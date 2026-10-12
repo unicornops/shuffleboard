@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.23.0](https://github.com/unicornops/shuffleboard/compare/v0.22.0...v0.23.0) (2026-10-12)
+
+
+### Features
+
+* **offline:** keep a copy of the boards on the Mac and work read-only offline ([#186](https://github.com/unicornops/shuffleboard/issues/186)) ([5584578](https://github.com/unicornops/shuffleboard/commit/5584578fc310a6014ef0d474786399134138dcde))
+
 ## [0.22.0](https://github.com/unicornops/shuffleboard/compare/v0.21.4...v0.22.0) (2026-10-12)
 
 
