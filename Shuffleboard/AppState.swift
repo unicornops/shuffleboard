@@ -1369,7 +1369,8 @@ extension AppState {
             reminders.setUserId(userId, for: account.id)
         }
         await loadAllCards()
-        guard activeAccount?.id == account.id else { return }
+        // Offline, only some boards' cards are known; the reminders already scheduled stay as they are (#156).
+        guard activeAccount?.id == account.id, connectionProblem == nil else { return }
         // Until the server says, the name the user signed in with, which is usually their user id.
         let userId = reminders.userId(for: account.id) ?? account.username
         await reminders.update(cards: remindableCards, userId: userId, accountId: account.id, now: now())

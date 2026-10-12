@@ -256,6 +256,52 @@ final class OfflineTests: XCTestCase {
         XCTAssertEqual(app.cardSearchResults.flatMap(\.results).map(\.card.title), ["Saved card"])
     }
 
+    func testRemindersAlreadyScheduledStayWhileOffline() async throws {
+        let due = DeckDate.string(from: Date().addingTimeInterval(72 * 3600))
+        let boards = #"[{"id": 1, "title": "Mine", "archived": false, "owner": {"uid": "rob"}, "acl": []}]"#
+        let stacks = #"[{"id": 10, "title": "To do", "boardId": 1, "order": 0, "cards": [{"id": 100, "title": "Due", "#
+            + #""stackId": 10, "order": 0, "duedate": "\#(due)"}]}]"#
+        let reachable = reachable
+        StubURLProtocol.handler = { request in
+            guard reachable.withLock({ $0 }) else { return StubResponse(error: URLError(.cannotConnectToHost)) }
+            if request.path.hasSuffix("/boards") {
+                return .json(boards)
+            }
+            return .json(request.path.hasSuffix("/boards/1/stacks") ? stacks : "[]")
+        }
+        let suite = "OfflineTests-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        addTeardownBlock { UserDefaults().removePersistentDomain(forName: suite) }
+        let notifications = FakeReminderNotifications()
+        let cache = InMemoryBoardCacheStore()
+
+        let online = AppState(
+            credentialStore: InMemoryCredentialStore.signedIn(),
+            session: StubURLProtocol.session(),
+            openURL: { _ in },
+            reminders: CardReminderSync(notifications: notifications, defaults: defaults),
+            boardCache: cache
+        )
+        await waitUntil { online.selectedBoardId == 1 && !online.isLoading }
+        await online.updateReminders()
+        XCTAssertEqual(notifications.pending.count, 2, "a day before, and when it's due")
+        online.flushCache()
+
+        // Launched offline, with the board's cards not in the copy: its reminders are left alone.
+        cache.snapshots[Self.rob]?.lists = [:]
+        setReachable(false)
+        let offline = AppState(
+            credentialStore: InMemoryCredentialStore.signedIn(),
+            session: StubURLProtocol.session(),
+            openURL: { _ in },
+            reminders: CardReminderSync(notifications: notifications, defaults: defaults),
+            boardCache: cache
+        )
+        await waitUntil { offline.connectionProblem != nil && !offline.isLoading }
+        await offline.updateReminders()
+        XCTAssertEqual(notifications.pending.count, 2)
+    }
+
     // MARK: - Accounts
 
     func testSigningOutDeletesThatAccountsCopy() async throws {
