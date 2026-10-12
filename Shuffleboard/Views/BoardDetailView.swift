@@ -150,6 +150,12 @@ struct BoardDetailView: View {
                 .accessibilityLabel("Edit board")
             }
             Spacer()
+            // Left of the buttons, and always taking its space, so they don't shift when a refresh starts or ends.
+            ProgressView()
+                .controlSize(.small)
+                .opacity(appState.isLoadingStacks && !appState.stacks.isEmpty ? 1 : 0)
+                .help("Refreshing lists")
+                .accessibilityHidden(!appState.isLoadingStacks)
             filterMenu(board)
             Button {
                 showingSharing = true
@@ -174,11 +180,6 @@ struct BoardDetailView: View {
             }
             .help("Archived cards")
             .accessibilityLabel("Archived cards")
-            if appState.isLoadingStacks, !appState.stacks.isEmpty {
-                ProgressView()
-                    .controlSize(.small)
-                    .help("Refreshing lists")
-            }
             Button {
                 Task { await appState.loadStacks(boardId: board.id) }
             } label: {
