@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.23.1](https://github.com/unicornops/shuffleboard/compare/v0.23.0...v0.23.1) (2026-10-14)
+
+
+### Bug Fixes
+
+* **offline:** stop the offline banner making the window very tall ([#190](https://github.com/unicornops/shuffleboard/issues/190)) ([fe0fad0](https://github.com/unicornops/shuffleboard/commit/fe0fad021de616281c2cae76e15ea8b518a10a68))
+
 ## [0.23.0](https://github.com/unicornops/shuffleboard/compare/v0.22.0...v0.23.0) (2026-10-12)
 
 
