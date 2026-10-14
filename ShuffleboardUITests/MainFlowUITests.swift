@@ -436,10 +436,12 @@ final class MainFlowUITests: XCTestCase {
         // The copy is saved a second after the last change.
         try await Task.sleep(for: .seconds(2))
 
+        let windowFrame = app.windows.firstMatch.frame
         let config = try await serverSwitch.takeAway()
         addTeardownBlock { try? await serverSwitch.bringBack(config) }
         app.typeKey("r", modifierFlags: .command)
         app.element("offline banner").waitToAppear("No offline banner once the server went away")
+        XCTAssertEqual(app.windows.firstMatch.frame, windowFrame, "The window changed size when the banner appeared")
         XCTAssertTrue(app.card("Still here offline").exists, "The board is no longer shown")
         XCTAssertFalse(app.find(.button, "Add card").exists, "Cards can still be added")
         XCTAssertFalse(app.find(.button, "Add list").isEnabled, "Lists can still be added")
