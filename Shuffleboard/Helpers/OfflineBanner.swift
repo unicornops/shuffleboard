@@ -15,10 +15,15 @@ struct OfflineBanner: View {
         HStack(alignment: .firstTextBaseline, spacing: 10) {
             Image(systemName: problem == .offline ? "wifi.slash" : "exclamationmark.icloud")
                 .foregroundStyle(.orange)
+            // At most two lines, and never fixed to its full height: the window works out its smallest height by
+            // laying the board out at its narrowest, where the whole message wraps a word a line, so a fixed height
+            // made the window very tall when the banner appeared.
             message
                 .font(.callout)
+                .lineLimit(2)
+                .truncationMode(.tail)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .fixedSize(horizontal: false, vertical: true)
+                .help(message)
             Button {
                 Task {
                     isTrying = true
