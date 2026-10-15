@@ -236,6 +236,11 @@ struct CardDetailSheet: View {
         Section("Comments") {
             CardCommentsView(card: card)
         }
+        if !appState.activityIsUnavailable {
+            Section("Activity") {
+                CardActivityView(card: card)
+            }
+        }
         if !isReadOnly {
             cardActions
         }

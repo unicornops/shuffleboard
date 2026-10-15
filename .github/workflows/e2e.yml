@@ -84,7 +84,7 @@ jobs:
             [ $versions[] as $v
               | (if $profile != "realistic" then {nextcloud: $v, profile: "minimal", early_params: "1", name: ""} else empty end),
                 (if $profile != "minimal" then {nextcloud: $v, profile: "realistic", early_params: "", name: " (realistic)"} else empty end) ]
-            + (if $profile == "all" then [{nextcloud: $versions[0], profile: "minimal", early_params: "0", name: " (body parameters win)"}] else [] end)
+            + (if $profile == "all" then [{nextcloud: $versions[0], profile: "minimal", early_params: "0", activity: "0", name: " (body parameters win, no Activity app)"}] else [] end)
             | {include: .}')
           echo "Testing against: $matrix"
           echo "matrix=$(echo "$matrix" | jq -c .)" >> "$GITHUB_OUTPUT"
@@ -102,6 +102,7 @@ jobs:
       DECK_VERSION: ${{ inputs.deck }}
       E2E_PROFILE: ${{ matrix.profile }}
       E2E_EARLY_PARAMS: ${{ matrix.early_params }}
+      E2E_ACTIVITY: ${{ matrix.activity }}
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -133,7 +134,7 @@ jobs:
 
       - name: Show versions
         run: |
-          grep -E 'VERSION|PROFILE|EARLY' build/e2e/env | tee -a "$GITHUB_STEP_SUMMARY"
+          grep -E 'VERSION|PROFILE|EARLY|ACTIVITY' build/e2e/env | tee -a "$GITHUB_STEP_SUMMARY"
           # The test users' passwords are throwaway, but keep them out of the logs anyway.
           for name in E2E_ADMIN_PASSWORD E2E_ALICE_PASSWORD E2E_BOB_PASSWORD; do
             echo "::add-mask::$(grep "^$name=" build/e2e/env | cut -d= -f2-)"

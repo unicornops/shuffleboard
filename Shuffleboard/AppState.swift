@@ -44,6 +44,8 @@ final class AppState: ObservableObject {
     @Published var cardFilter = CardFilter()
     /// The server's Deck version (e.g. "1.18.5"), read once per account; nil until known.
     @Published private(set) var serverDeckVersion: String?
+    /// The server has no Activity app, so the card sheet leaves out the card's history (#164).
+    @Published private(set) var activityIsUnavailable = false
     /// Set while a board is being duplicated.
     @Published private(set) var boardCopyProgress: BoardCopyProgress?
     /// The card on the open board that the Card menu acts on, outlined on the board (#159).
@@ -860,6 +862,16 @@ extension AppState {
         await commentAction { try await $0.deleteComment(cardId: card.id, commentId: comment.id) } != nil
     }
 
+    /// A page of the card's history (#164), newest first, older than the event `since`; nil (and the banner) on
+    /// failure. Notes a server without the Activity app, so the history is left out from then on.
+    func activity(for card: Card, since: Int?, limit: Int) async -> CardActivityPage? {
+        let page = await commentAction { try await $0.getCardActivity(cardId: card.id, since: since, limit: limit) }
+        if page == .unavailable {
+            activityIsUnavailable = true
+        }
+        return page
+    }
+
     private func commentAction<Result: Sendable>(_ action: (DeckAPI) async throws -> Result) async -> Result? {
         guard let api = deckAPI else { return nil }
         do {
@@ -1241,6 +1253,7 @@ extension AppState {
         boardsETagDate = nil
         serverDeckVersion = nil
         checkedDeckVersion = false
+        activityIsUnavailable = false
         clearStacks()
         cardFilter = CardFilter()
         actionError = nil

@@ -9,6 +9,8 @@ struct UITestServer: Sendable {
     let url: URL
     /// The server's Deck version, e.g. "1.18.5".
     let deckVersion: String
+    /// Whether the server has the Activity app, which cards' history comes from (#164). One test job turns it off.
+    let hasActivity: Bool
     private let passwords: [String: String]
 
     static let alice = "alice"
@@ -23,6 +25,7 @@ struct UITestServer: Sendable {
         return UITestServer(
             url: url,
             deckVersion: env["E2E_DECK_VERSION"] ?? "",
+            hasActivity: env["E2E_ACTIVITY"] != "0",
             passwords: [Self.alice: alice, Self.bob: bob]
         )
     }

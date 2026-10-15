@@ -15,6 +15,8 @@ struct TestServer: Sendable {
     let version: String
     /// The Deck release on the server, e.g. `1.19.0`.
     let deckVersion: String
+    /// Whether the server has the Activity app, which cards' history comes from (#164). One test job turns it off.
+    let hasActivity: Bool
     private let passwords: [String: String]
 
     static let alice = "alice"
@@ -34,7 +36,13 @@ struct TestServer: Sendable {
             passwords[user] = password
         }
         let version = "Nextcloud \(env["E2E_NEXTCLOUD_VERSION"] ?? "?"), Deck \(env["E2E_DECK_VERSION"] ?? "?")"
-        return TestServer(url: url, version: version, deckVersion: env["E2E_DECK_VERSION"] ?? "", passwords: passwords)
+        return TestServer(
+            url: url,
+            version: version,
+            deckVersion: env["E2E_DECK_VERSION"] ?? "",
+            hasActivity: env["E2E_ACTIVITY"] != "0",
+            passwords: passwords
+        )
     }
 
     /// Whether the server's Deck is `version` or newer, for behaviour that changed between Deck releases.
