@@ -11,7 +11,7 @@ name: End-to-end tests
 # - Pull requests: the minimal server, on the newest Nextcloud major that Deck supports, with the newest Deck for it.
 # - Daily, and on demand: both profiles on every Nextcloud major still getting releases (up to the newest Deck
 #   supports), each with the newest Deck for it, plus the minimal server without the test app (the body's
-#   parameters win) on the newest. A failing scheduled run opens (or comments on) an issue, so a server release
+#   parameters win) or the Activity app on the newest. A failing scheduled run opens (or comments on) an issue, so a server release
 #   that breaks the app is noticed.
 # - Every run takes the README screenshots (artifact "screenshots"); on demand with "screenshots" it also opens a
 #   pull request with them.
@@ -30,7 +30,7 @@ on:
         description: "Deck release, e.g. 1.19.0 (default: the newest the app store has for that Nextcloud)"
         default: ""
       profile:
-        description: "Server profile: all (minimal, realistic, and minimal with body parameters winning), minimal or realistic"
+        description: "Server profile: all (minimal, realistic, and minimal with body parameters winning and no Activity app), minimal or realistic"
         type: choice
         options: [all, minimal, realistic]
         default: all
