@@ -19,6 +19,8 @@ final class DeckAPI: Sendable {
     private let appPasswordURL: URL
     /// Nextcloud's capabilities, which include the server's Deck version.
     private let capabilitiesURL: URL
+    /// The Activity app's OCS API filtered to one object, for cards' history (#164).
+    private let activityURL: URL
     private let username: String
     private let appPassword: String
     private let session: URLSession
@@ -65,6 +67,15 @@ final class DeckAPI: Sendable {
             .appendingPathComponent("v2.php")
             .appendingPathComponent("core")
             .appendingPathComponent("apppassword")
+        self.activityURL = serverURL
+            .appendingPathComponent("ocs")
+            .appendingPathComponent("v2.php")
+            .appendingPathComponent("apps")
+            .appendingPathComponent("activity")
+            .appendingPathComponent("api")
+            .appendingPathComponent("v2")
+            .appendingPathComponent("activity")
+            .appendingPathComponent("filter")
         self.username = username
         self.appPassword = appPassword
         self.session = session
@@ -666,6 +677,41 @@ extension DeckAPI {
     private func commentsURL(cardId: Int, commentId: Int? = nil) -> URL? {
         let path = "cards/\(cardId)/comments" + (commentId.map { "/\($0)" } ?? "")
         return Self.url(base: ocsBaseURL, path: path)
+    }
+}
+
+// MARK: - Activity
+
+extension DeckAPI {
+    /// A page of the card's history (#164), newest first: up to `limit` events older than the event `since`, or
+    /// the newest without it. From the Activity app, which Deck records cards' events in; `.unavailable` if the
+    /// server doesn't have it.
+    func getCardActivity(cardId: Int, since: Int? = nil, limit: Int = 20) async throws -> CardActivityPage {
+        guard var components = URLComponents(url: activityURL, resolvingAgainstBaseURL: false) else {
+            throw DeckAPIError.invalidURL
+        }
+        components.queryItems = [
+            URLQueryItem(name: "object_type", value: "deck_card"),
+            URLQueryItem(name: "object_id", value: String(cardId)),
+            URLQueryItem(name: "limit", value: String(limit)),
+        ] + (since.map { [URLQueryItem(name: "since", value: String($0))] } ?? [])
+        guard let url = components.url else { throw DeckAPIError.invalidURL }
+        var request = authorizedRequest(url: url, method: "GET")
+        request.cachePolicy = .reloadIgnoringLocalCacheData
+        let (data, response) = try await session.data(for: request)
+        switch (response as? HTTPURLResponse)?.statusCode {
+        case 404:
+            // What Nextcloud answers for an app's API when the app isn't enabled.
+            return .unavailable
+
+        case 204, 304:
+            // 204: the user doesn't list Deck's events in their activity stream; 304: no older events.
+            return .events([])
+
+        default:
+            try validate(response: response, data: data)
+            return try .events(decoder.decode(OCSResponse<[CardActivity]>.self, from: data).ocs.data)
+        }
     }
 }
 

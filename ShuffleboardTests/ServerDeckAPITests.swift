@@ -456,6 +456,75 @@ final class ServerDeckAPITests: XCTestCase {
         }
     }
 
+    // MARK: - Activity (#164)
+
+    /// A card's history from the Activity app: what was done to it and by whom, newest first, a page at a time.
+    /// On the job without the Activity app, the server says it has none.
+    func testCardActivity() async throws {
+        try await withTemporaryBoard(api) { board in
+            let todo = try await api.createStack(boardId: board.id, title: "To do", order: 0)
+            let done = try await api.createStack(boardId: board.id, title: "Done", order: 1)
+            let card = try await api.createCard(boardId: board.id, stackId: todo.id, title: "Plan")
+            guard server.hasActivity else {
+                let page = try await api.getCardActivity(cardId: card.id)
+                XCTAssertEqual(page, .unavailable, "\(server.version) without the Activity app: no history")
+                return
+            }
+
+            var edited = try await api.getCard(boardId: board.id, stackId: todo.id, cardId: card.id)
+            edited.title = "Plan it"
+            edited = edited.withSchedule(
+                startDate: nil,
+                dueDate: Date(timeIntervalSince1970: 1_900_000_000),
+                isDone: false
+            )
+            _ = try await api.updateCard(boardId: board.id, stackId: todo.id, card: edited)
+            try await api.reorderCard(boardId: board.id, cardId: card.id, order: 0, newStackId: done.id)
+
+            let events = try await activity(of: card.id, atLeast: 3)
+            XCTAssertEqual(events.map(\.id), events.map(\.id).sorted(by: >), "Events should come newest first")
+            XCTAssertTrue(events.allSatisfy { $0.userId == TestServer.alice }, "Alice did everything: \(events)")
+            XCTAssertTrue(events.allSatisfy { $0.createdAt != nil }, "Every event has a date")
+            XCTAssertTrue(
+                events.contains { $0.subject.contains("Plan it") && $0.segments.contains(.name("Plan it")) },
+                "No event names the new title: \(events.map(\.subject))"
+            )
+            let created = try XCTUnwrap(events.last, "No events")
+            XCTAssertTrue(
+                created.segments.contains(.name("Plan")),
+                "The oldest event isn't the card being created: \(created.subject)"
+            )
+            XCTAssertTrue(
+                events.contains { $0.userName == "Alice Example" || $0.subject.hasPrefix("You ") },
+                "The events don't say who did them: \(events.map(\.subject))"
+            )
+
+            // A page at a time: the event after the newest, then nothing after the oldest.
+            let second = try await api.getCardActivity(cardId: card.id, since: events[0].id, limit: 1)
+            XCTAssertEqual(second, .events([events[1]]))
+            let end = try await api.getCardActivity(cardId: card.id, since: created.id)
+            XCTAssertEqual(end, .events([]))
+        }
+    }
+
+    /// The card's events, once there are at least `count`: the Activity app may record them a moment late.
+    private func activity(of cardId: Int, atLeast count: Int) async throws -> [CardActivity] {
+        var events: [CardActivity] = []
+        for _ in 0 ..< 20 {
+            guard case let .events(page) = try await api.getCardActivity(cardId: cardId, limit: 50) else {
+                XCTFail("\(server.version) has no Activity app")
+                return []
+            }
+            events = page
+            if events.count >= count {
+                break
+            }
+            try await Task.sleep(for: .milliseconds(500))
+        }
+        XCTAssertGreaterThanOrEqual(events.count, count, "Too few events: \(events.map(\.subject))")
+        return events
+    }
+
     // MARK: - Sharing
 
     func testSharingWithAPersonAndAGroup() async throws {

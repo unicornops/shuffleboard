@@ -396,6 +396,20 @@ final class MainFlowUITests: XCTestCase {
         composer.typeText("Looks good to me")
         app.find(.button, "Comment").click()
         app.staticTexts["Looks good to me"].waitToAppear("Posted comment not shown")
+
+        // The card's history (#164), below the comments: the rename names the old title.
+        let activity = app.element("card activity")
+        if server.hasActivity {
+            if !activity.waitForExistence(timeout: 5) {
+                app.sheets.firstMatch.scrollViews.firstMatch.scroll(byDeltaX: 0, deltaY: -2000)
+            }
+            activity.waitToAppear("No Activity section on the card")
+            activity.descendants(matching: .any)
+                .matching(NSPredicate(format: "label CONTAINS %@", "Draft title")).firstMatch
+                .waitToAppear("The card's activity doesn't show the rename")
+        } else {
+            XCTAssertFalse(activity.waitForExistence(timeout: 5), "An Activity section without the Activity app")
+        }
         app.find(.button, "Cancel").click()
     }
 

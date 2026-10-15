@@ -18,6 +18,8 @@
 #   E2E_EARLY_PARAMS   1 (default for minimal) installs the e2e_early_params test app, so a parameter in both the
 #                      URL and the body takes the URL's value; 0 leaves it out, so the body's value wins. The
 #                      realistic profile leaves it out by default: its apps decide, as on a real server.
+#   E2E_ACTIVITY       1 (default) keeps the Activity app, which cards' history comes from (#164); 0 turns it off,
+#                      as some servers have it, so the tests see a server without it.
 #   E2E_DIR            working directory, default build/e2e
 #   E2E_PORT           HTTPS port, default 8443
 #   E2E_CADDY_ADMIN_PORT  port of Caddy's admin API on localhost, default 2999 (the UI tests use it)
@@ -32,6 +34,7 @@ DECK_VERSION="${DECK_VERSION:-}"
 E2E_DIR="${E2E_DIR:-build/e2e}"
 E2E_PORT="${E2E_PORT:-8443}"
 E2E_PROFILE="${E2E_PROFILE:-minimal}"
+E2E_ACTIVITY="${E2E_ACTIVITY:-1}"
 # The port Caddy forwards to: PHP's built-in server, or nginx.
 PHP_PORT="${E2E_PHP_PORT:-8080}"
 DB_PORT="${E2E_DB_PORT:-3307}"
@@ -239,7 +242,15 @@ else
     occ app:install deck
 fi
 
-# MARK: - Test app
+# MARK: - Activity
+
+# Nextcloud ships the Activity app enabled; Deck records cards' history in it (#164).
+if [ "$E2E_ACTIVITY" = 0 ]; then
+    log "Turning off the Activity app"
+    occ app:disable activity >/dev/null
+else
+    occ app:enable activity >/dev/null
+fi
 
 # MARK: - Other apps (realistic)
 
@@ -471,6 +482,7 @@ E2E_NEXTCLOUD_VERSION=$(occ status --output=json | jq -r .versionstring)
 E2E_DECK_VERSION=$(occ app:list --output=json | jq -r '.enabled.deck')
 E2E_PROFILE=$E2E_PROFILE
 E2E_EARLY_PARAMS=$E2E_EARLY_PARAMS
+E2E_ACTIVITY=$E2E_ACTIVITY
 EOF
 if [ "$E2E_PROFILE" = realistic ]; then
     # Run the background jobs once, as cron would every five minutes.
@@ -478,4 +490,4 @@ if [ "$E2E_PROFILE" = realistic ]; then
     php -d apc.enable_cli=1 -d memory_limit=512M "$SERVER_DIR/cron.php" >"$LOG_DIR/cron.log" 2>&1 ||
         echo "warning: cron.php failed, see $LOG_DIR/cron.log" >&2
 fi
-log "Server ready at $SERVER_URL: $(grep -E 'VERSION|PROFILE|EARLY' "$E2E_DIR/env" | tr '\n' ' ')"
+log "Server ready at $SERVER_URL: $(grep -E 'VERSION|PROFILE|EARLY|ACTIVITY' "$E2E_DIR/env" | tr '\n' ' ')"
