@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.24.0](https://github.com/unicornops/shuffleboard/compare/v0.23.1...v0.24.0) (2026-10-15)
+
+
+### Features
+
+* **cards:** show a card's activity history ([#193](https://github.com/unicornops/shuffleboard/issues/193)) ([61d7bab](https://github.com/unicornops/shuffleboard/commit/61d7babf09724c2ca7296514986cd1c18766fcf3))
+
+
+### Chores
+
+* **deps:** bump actions/upload-artifact from 7.0.1 to 7.0.2 ([#188](https://github.com/unicornops/shuffleboard/issues/188)) ([bcd4ea3](https://github.com/unicornops/shuffleboard/commit/bcd4ea3793b9a1977633a4c4d01416d5654af807))
+* **deps:** bump shivammathur/setup-php from 2.37.2 to 2.40.0 ([#189](https://github.com/unicornops/shuffleboard/issues/189)) ([44b2eae](https://github.com/unicornops/shuffleboard/commit/44b2eaea9c79403770d73af5fdeb5939866f893f))
+
 ## [0.23.1](https://github.com/unicornops/shuffleboard/compare/v0.23.0...v0.23.1) (2026-10-14)
 
 
