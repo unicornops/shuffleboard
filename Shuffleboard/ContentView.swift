@@ -1,7 +1,41 @@
 import SwiftUI
 
+// MARK: - BoardWindowRoot
+
+/// A window of the app: makes the window's `BoardWindow` when it opens, and points the menu commands at it while
+/// it's in front.
+struct BoardWindowRoot: View {
+    let appState: AppState
+    let commandState: BoardCommandState
+    @StateObject private var window: BoardWindow
+    @Environment(\.controlActiveState) private var controlActiveState
+
+    init(appState: AppState, commandState: BoardCommandState) {
+        self.appState = appState
+        self.commandState = commandState
+        _window = StateObject(wrappedValue: BoardWindow(app: appState))
+    }
+
+    var body: some View {
+        ContentView()
+            .environmentObject(appState)
+            .environmentObject(window)
+            .onAppear {
+                commandState.activate(window)
+            }
+            .onChange(of: controlActiveState) { _, state in
+                if state == .key {
+                    commandState.activate(window)
+                }
+            }
+    }
+}
+
+// MARK: - ContentView
+
 struct ContentView: View {
     @EnvironmentObject private var appState: AppState
+    @EnvironmentObject private var window: BoardWindow
 
     var body: some View {
         Group {
@@ -57,7 +91,7 @@ struct ContentView: View {
         .onReceive(CardReminderClicks.shared.$clicked) { clicked in
             guard let clicked else { return }
             CardReminderClicks.shared.clicked = nil
-            Task { await appState.openCard(id: clicked.cardId, boardId: clicked.boardId, accountId: clicked.accountId) }
+            Task { await window.openCard(id: clicked.cardId, boardId: clicked.boardId, accountId: clicked.accountId) }
         }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
@@ -234,5 +268,15 @@ private struct AboutSheet: View {
 
 #Preview {
     ContentView()
-        .environmentObject(AppState())
+        .previewEnvironment()
+}
+
+extension View {
+    /// What the app's views need around them in previews: an `AppState` and a window on it.
+    @MainActor
+    func previewEnvironment() -> some View {
+        let appState = AppState()
+        return environmentObject(appState)
+            .environmentObject(BoardWindow(app: appState))
+    }
 }

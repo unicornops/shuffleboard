@@ -11,7 +11,7 @@
 		A10000000000000000000047 /* BoardCommands.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000047 /* BoardCommands.swift */; };
 		A10000000000000000000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000002 /* ContentView.swift */; };
 		A10000000000000000000003 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000003 /* AppState.swift */; };
-		A10000000000000000000046 /* AppState+Keyboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000046 /* AppState+Keyboard.swift */; };
+		A10000000000000000000046 /* BoardWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000046 /* BoardWindow.swift */; };
 		A10000000000000000000050 /* AppState+Refresh.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000050 /* AppState+Refresh.swift */; };
 		A10000000000000000000004 /* Board.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000004 /* Board.swift */; };
 		A10000000000000000000005 /* Stack.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000005 /* Stack.swift */; };
@@ -68,6 +68,7 @@
 		B1000000000000000000000E /* CardSearchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000000000000000000000E /* CardSearchTests.swift */; };
 		B10000000000000000000010 /* SettingsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000010 /* SettingsTests.swift */; };
 		B10000000000000000000061 /* OfflineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000061 /* OfflineTests.swift */; };
+		B10000000000000000000063 /* WindowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000063 /* WindowTests.swift */; };
 		B10000000000000000000062 /* CardActivityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000062 /* CardActivityTests.swift */; };
 		B10000000000000000000060 /* MentionsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000060 /* MentionsTests.swift */; };
 		B1000000000000000000000F /* CardReminderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000000000000000000000F /* CardReminderTests.swift */; };
@@ -111,7 +112,7 @@
 		A20000000000000000000047 /* BoardCommands.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardCommands.swift; sourceTree = "<group>"; };
 		A20000000000000000000002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		A20000000000000000000003 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
-		A20000000000000000000046 /* AppState+Keyboard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppState+Keyboard.swift"; sourceTree = "<group>"; };
+		A20000000000000000000046 /* BoardWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardWindow.swift; sourceTree = "<group>"; };
 		A20000000000000000000050 /* AppState+Refresh.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppState+Refresh.swift"; sourceTree = "<group>"; };
 		A20000000000000000000004 /* Board.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Board.swift; sourceTree = "<group>"; };
 		A20000000000000000000005 /* Stack.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Stack.swift; sourceTree = "<group>"; };
@@ -170,6 +171,7 @@
 		B2000000000000000000000E /* CardSearchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardSearchTests.swift; sourceTree = "<group>"; };
 		B20000000000000000000010 /* SettingsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsTests.swift; sourceTree = "<group>"; };
 		B20000000000000000000061 /* OfflineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineTests.swift; sourceTree = "<group>"; };
+		B20000000000000000000063 /* WindowTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowTests.swift; sourceTree = "<group>"; };
 		B20000000000000000000062 /* CardActivityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardActivityTests.swift; sourceTree = "<group>"; };
 		B20000000000000000000060 /* MentionsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MentionsTests.swift; sourceTree = "<group>"; };
 		B2000000000000000000000F /* CardReminderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardReminderTests.swift; sourceTree = "<group>"; };
@@ -234,7 +236,7 @@
 				A20000000000000000000047 /* BoardCommands.swift */,
 				A20000000000000000000002 /* ContentView.swift */,
 				A20000000000000000000003 /* AppState.swift */,
-				A20000000000000000000046 /* AppState+Keyboard.swift */,
+				A20000000000000000000046 /* BoardWindow.swift */,
 				A20000000000000000000050 /* AppState+Refresh.swift */,
 				A40000000000000000000004 /* Models */,
 				A40000000000000000000005 /* Services */,
@@ -348,6 +350,7 @@
 				B2000000000000000000000E /* CardSearchTests.swift */,
 				B20000000000000000000010 /* SettingsTests.swift */,
 				B20000000000000000000061 /* OfflineTests.swift */,
+				B20000000000000000000063 /* WindowTests.swift */,
 				B20000000000000000000062 /* CardActivityTests.swift */,
 				B20000000000000000000060 /* MentionsTests.swift */,
 				B2000000000000000000000F /* CardReminderTests.swift */,
@@ -527,7 +530,7 @@
 				A10000000000000000000047 /* BoardCommands.swift in Sources */,
 				A10000000000000000000002 /* ContentView.swift in Sources */,
 				A10000000000000000000003 /* AppState.swift in Sources */,
-				A10000000000000000000046 /* AppState+Keyboard.swift in Sources */,
+				A10000000000000000000046 /* BoardWindow.swift in Sources */,
 				A10000000000000000000050 /* AppState+Refresh.swift in Sources */,
 				A10000000000000000000004 /* Board.swift in Sources */,
 				A10000000000000000000005 /* Stack.swift in Sources */,
@@ -596,6 +599,7 @@
 				B1000000000000000000000E /* CardSearchTests.swift in Sources */,
 				B10000000000000000000010 /* SettingsTests.swift in Sources */,
 				B10000000000000000000061 /* OfflineTests.swift in Sources */,
+				B10000000000000000000063 /* WindowTests.swift in Sources */,
 				B10000000000000000000062 /* CardActivityTests.swift in Sources */,
 				B10000000000000000000060 /* MentionsTests.swift in Sources */,
 				B1000000000000000000000F /* CardReminderTests.swift in Sources */,

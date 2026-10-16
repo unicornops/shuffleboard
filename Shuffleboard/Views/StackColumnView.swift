@@ -26,6 +26,7 @@ struct StackColumnView: View {
     let stack: Stack
     var onSelectCard: (Card) -> Void
     @EnvironmentObject private var appState: AppState
+    @EnvironmentObject private var window: BoardWindow
 
     @State private var newCardTitle = ""
     @State private var pendingDelete = false
@@ -38,7 +39,7 @@ struct StackColumnView: View {
     @FocusState private var isNewCardFocused: Bool
 
     private var isDropTargeted: Bool {
-        guard !appState.isDraggingStack else { return false }
+        guard !window.isDraggingStack else { return false }
         return dragInsertIndex != nil || isColumnDropTargeted
     }
 
@@ -50,24 +51,24 @@ struct StackColumnView: View {
 
     /// The stack's cards that match the board's filter, in order.
     private var cards: [Card] {
-        appState.shownCards(in: stack)
+        window.shownCards(in: stack)
     }
 
     /// Whether this list shows its "new card" field; File > New Card opens it too.
     private var isAddingCard: Bool {
-        get { appState.newCardListId == stack.id }
+        get { window.newCardListId == stack.id }
         nonmutating set {
             if newValue {
-                appState.newCardListId = stack.id
-            } else if appState.newCardListId == stack.id {
-                appState.newCardListId = nil
+                window.newCardListId = stack.id
+            } else if window.newCardListId == stack.id {
+                window.newCardListId = nil
             }
         }
     }
 
     /// Drag and drop places cards by position among all of a stack's cards, so it is off while some are hidden.
     private var isFiltering: Bool {
-        appState.cardFilter.isActive
+        window.cardFilter.isActive
     }
 
     /// Nothing can be changed while the server can't be reached (#156).
@@ -189,7 +190,7 @@ struct StackColumnView: View {
         let currentCards = cards
         return ScrollViewReader { proxy in
             cardScrollView(currentCards)
-                .onChange(of: appState.selectedCardId) { _, id in
+                .onChange(of: window.selectedCardId) { _, id in
                     // Keep the card the arrow keys select in view.
                     if let id, currentCards.contains(where: { $0.id == id }) {
                         withAnimation(.easeInOut(duration: 0.15)) { proxy.scrollTo(id) }
@@ -211,8 +212,8 @@ struct StackColumnView: View {
                 ForEach(0 ..< currentCards.count, id: \.self) { index in
                     CardRowView(
                         card: currentCards[index],
-                        isSelected: appState.selectedCardId == currentCards[index].id,
-                        onDelete: isReadOnly ? nil : { appState.cardPendingDelete = currentCards[index] },
+                        isSelected: window.selectedCardId == currentCards[index].id,
+                        onDelete: isReadOnly ? nil : { window.cardPendingDelete = currentCards[index] },
                         onToggleDone: isReadOnly ? nil : {
                             let card = currentCards[index]
                             Task { await appState.setCardDone(boardId: board.id, card: card, done: !card.isDone) }
@@ -223,7 +224,7 @@ struct StackColumnView: View {
                         },
                         isDraggable: !isFiltering && !isReadOnly,
                         // A list drag that was cancelled may have left this set; this drag is a card.
-                        onDragStart: { appState.isDraggingStack = false },
+                        onDragStart: { window.isDraggingStack = false },
                         action: { onSelectCard(currentCards[index]) }
                     )
                     .padding(.horizontal, 10)
@@ -239,7 +240,7 @@ struct StackColumnView: View {
 
     @ViewBuilder
     private func insertionGap(at index: Int) -> some View {
-        let targeted = dragInsertIndex == index && !appState.isDraggingStack
+        let targeted = dragInsertIndex == index && !window.isDraggingStack
         ZStack(alignment: .center) {
             Color.clear
                 .frame(height: targeted ? 20 : 8)
@@ -325,7 +326,7 @@ struct StackColumnView: View {
         newCardTitle = ""
         isAddingCard = false
         Task {
-            await appState.createCard(boardId: board.id, stackId: stack.id, title: title)
+            await window.createCard(boardId: board.id, stackId: stack.id, title: title)
         }
     }
 
@@ -361,7 +362,7 @@ struct StackColumnView: View {
     private func handleDropAtIndex(providers: [NSItemProvider], insertIndex: Int) -> Bool {
         dragLogger.notice("Drop on list \(stack.id) at position \(insertIndex)")
         // A list dropped here (rather than between lists) ends its drag too.
-        appState.isDraggingStack = false
+        window.isDraggingStack = false
         return loadDraggedCard(from: providers) { draggedCard in
             Task { @MainActor in
                 if draggedCard.stackId == stack.id {
@@ -395,7 +396,7 @@ struct StackColumnView: View {
 
     /// Logs where the server put a card this list asked to move.
     private func logMoveResult(cardId: Int) {
-        let list = appState.stacks.first { $0.cards?.contains { $0.id == cardId } == true }?.id
+        let list = window.stacks.first { $0.cards?.contains { $0.id == cardId } == true }?.id
         let outcome = list.map { "is in list \($0)" } ?? "is in no list"
         dragLogger.notice("Moved card \(cardId) to list \(stack.id): it \(outcome, privacy: .public)")
         if let error = appState.actionError {
@@ -408,7 +409,7 @@ struct StackColumnView: View {
     /// precise placement (both cross-stack and within-stack reordering).
     private func handleColumnDrop(providers: [NSItemProvider]) -> Bool {
         dragLogger.notice("Drop on list \(stack.id), not between cards")
-        appState.isDraggingStack = false
+        window.isDraggingStack = false
         return loadDraggedCard(from: providers) { draggedCard in
             guard draggedCard.stackId != stack.id else {
                 dragLogger.notice("Drop ignored: card \(draggedCard.id) is already in list \(stack.id)")
@@ -673,5 +674,5 @@ struct AvatarBadge: View {
         stack: Stack(id: 1, title: "To Do", boardId: 1, deletedAt: nil, lastModified: nil, cards: [], order: 0),
         onSelectCard: { _ in }
     )
-    .environmentObject(AppState())
+    .previewEnvironment()
 }

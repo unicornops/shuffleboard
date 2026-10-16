@@ -111,5 +111,5 @@ struct CreateSheetFooter: View {
     }
     .padding(24)
     .frame(width: 320)
-    .environmentObject(AppState())
+    .previewEnvironment()
 }

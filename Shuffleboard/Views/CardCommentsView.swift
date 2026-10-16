@@ -7,6 +7,7 @@ import SwiftUI
 struct CardCommentsView: View {
     let card: Card
     @EnvironmentObject private var appState: AppState
+    @EnvironmentObject private var window: BoardWindow
 
     /// Loaded comments, oldest first.
     @State private var comments: [CardComment] = []
@@ -179,7 +180,7 @@ struct CardCommentsView: View {
 
     /// The people a comment can mention (#163): the board's members, other than the user.
     private var mentionable: [DeckUser] {
-        (appState.selectedBoard?.assignableUsers ?? []).filter { $0.uid != appState.currentUserId }
+        (window.selectedBoard?.assignableUsers ?? []).filter { $0.uid != appState.currentUserId }
     }
 
     /// The comment's message with mentions shown by name, in bold and the accent colour.

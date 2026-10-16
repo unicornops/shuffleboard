@@ -18,8 +18,7 @@ struct ShuffleboardApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
-                .environmentObject(appState)
+            BoardWindowRoot(appState: appState, commandState: commandState)
                 #if DEBUG
                 .onAppear { UITestLaunch.applyAppearance() }
                 #endif

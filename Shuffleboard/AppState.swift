@@ -7,67 +7,35 @@ final class AppState: ObservableObject {
     /// Every signed-in account, in the order they were added; `activeAccount` is the one in use.
     @Published private(set) var accounts: [Account] = []
     @Published var boards: [Board] = [] {
-        didSet { recordBoards() }
-    }
-
-    @Published var selectedBoardId: Int? {
         didSet {
-            if selectedBoardId != oldValue {
-                selectedCardId = nil
-                newCardListId = nil
-                recordSelectedBoard()
+            recordBoards()
+            for window in windows {
+                window.boardsDidChange()
             }
         }
     }
 
-    @Published var stacks: [Stack] = [] {
-        didSet {
-            if stacksAreFromServer, let stacksBoardId {
-                recordLists(stacks, boardId: stacksBoardId)
-            }
-        }
-    }
+    /// The lists and cards of the boards open in windows, by board id (#160).
+    @Published private(set) var lists: [Int: BoardLists] = [:]
 
     /// Why the server can't be reached, if it can't (#156). The boards on the Mac are shown read-only meanwhile.
     @Published private(set) var connectionProblem: ConnectionProblem?
     @Published var isLoading = false
-    @Published var isLoadingStacks = false
     /// Errors shown inline where they happen: the login screen, the empty sidebar and the create sheets.
     @Published var errorMessage: String?
     /// Errors from actions that have no UI of their own (moving, deleting, labelling…), shown as a banner.
     @Published var actionError: String?
-    @Published var stacksError: String?
     @Published var showingLogin = false
     @Published var showingAbout = false
-    @Published var isDraggingStack = false
-    /// Which cards the open board shows; reset when switching boards.
-    @Published var cardFilter = CardFilter()
     /// The server's Deck version (e.g. "1.18.5"), read once per account; nil until known.
     @Published private(set) var serverDeckVersion: String?
     /// The server has no Activity app, so the card sheet leaves out the card's history (#164).
     @Published private(set) var activityIsUnavailable = false
     /// Set while a board is being duplicated.
     @Published private(set) var boardCopyProgress: BoardCopyProgress?
-    /// The card on the open board that the Card menu acts on, outlined on the board (#159).
-    @Published var selectedCardId: Int?
-    /// The card whose sheet is open, on the open board.
-    @Published var openedCard: Card?
-    /// The list showing its "new card" field.
-    @Published var newCardListId: Int?
-    /// The card waiting for the user to confirm deleting it.
-    @Published var cardPendingDelete: Card?
-    @Published var showingNewStack = false
-    @Published var showingNewBoard = false
-    /// Incremented by Edit > Filter Cards, to put the cursor in the filter field.
-    @Published var filterFocusRequest = 0
-    @Published var showingArchivedCards = false
     /// Every board's cards, by board id, for searching all boards (#158); see `loadAllCards`.
     @Published private(set) var allCards: [Int: BoardCards] = [:]
     @Published private(set) var isLoadingAllCards = false
-    /// What the sidebar's search field is searching every board for.
-    @Published var cardSearchText = ""
-    /// Incremented by Edit > Search All Boards, to put the cursor in the sidebar's search field.
-    @Published var cardSearchFocusRequest = 0
 
     private var deckAPI: DeckAPI?
     /// Where credentials are kept: the Keychain in the app, an in-memory store in tests.
@@ -78,10 +46,8 @@ final class AppState: ObservableObject {
     private let openURL: @MainActor @Sendable (URL) -> Void
     /// Notifications about due and newly assigned cards (#157); nil in tests and UI tests.
     let reminders: CardReminderSync?
-    /// The board `stacks` currently belongs to.
-    private var stacksBoardId: Int?
-    /// Whether `stacks` came from the server (and changes made since), rather than from the copy on the Mac.
-    private var stacksAreFromServer = false
+    /// The windows on this app's boards; see `register(_:)`.
+    private var windowRefs: [WeakBoardWindow] = []
     /// Where the copy of each account's boards is kept (#156); nil in tests that don't use one.
     let boardCache: BoardCacheStore?
     /// The copy of the active account's boards, as last saved or about to be; see AppState+Offline.
@@ -90,14 +56,9 @@ final class AppState: ObservableObject {
     var cacheAccountId: Account.ID?
     /// Saves `cacheSnapshot` shortly after it changes.
     var cacheWriteTask: Task<Void, Never>?
-    /// Incremented by every `loadStacks` call; a response is only applied if no newer load has started.
-    private var stacksGeneration = 0
-    /// ETags of the last board list and of the lists of the board in `stacksBoardId`, for `refreshIfChanged()`.
+    /// The ETag of the last board list, and when it arrived, for `refreshIfChanged()`.
     private var boardsETag: String?
-    private var stacksETag: String?
-    /// When `boardsETag` arrived, and when the lists on screen were requested, for `refreshIfChanged()`.
     private var boardsETagDate: Date?
-    private var stacksFetchDate: Date?
     /// The clock; tests move it forward.
     var now: () -> Date = Date.init
     private var credentials: Credentials?
@@ -109,11 +70,6 @@ final class AppState: ObservableObject {
     /// The account whose boards are shown.
     var activeAccount: Account? {
         credentials?.account
-    }
-
-    var selectedBoard: Board? {
-        guard let id = selectedBoardId else { return nil }
-        return boards.first { $0.id == id }
     }
 
     init(
@@ -262,16 +218,16 @@ final class AppState: ObservableObject {
             let fetched = try await api.fetchBoards(ifNoneMatch: nil)
             // Switched accounts meanwhile: these are another account's boards.
             guard api === deckAPI, let fetched else { return }
+            let wereOpen = openBoardIds
+            // A window without a board opens one now (see `BoardWindow.boardsDidChange`); its BoardDetailView's
+            // `.task(id: selectedBoardId)` loads the board's lists.
             boards = fetched.value
             boardsETag = fetched.etag
             boardsETagDate = now()
             serverWasReached(boardsSyncedAt: now())
             await checkDeckVersion(api)
-            if selectedBoardId == nil, let first = activeBoards.first ?? archivedBoards.first {
-                // BoardDetailView's `.task(id: selectedBoardId)` loads the newly selected board's lists.
-                selectedBoardId = first.id
-            } else if let bid = selectedBoardId {
-                await loadStacks(boardId: bid)
+            for boardId in openBoardIds.intersection(wereOpen).sorted() {
+                await loadStacks(boardId: boardId)
             }
         } catch {
             guard api === deckAPI, !endSessionIfUnauthorized(error) else { return }
@@ -293,24 +249,20 @@ final class AppState: ObservableObject {
         await loadBoards()
     }
 
-    /// Loads the lists for `boardId` if it is the selected board.
+    /// Loads the lists of `boardId`, if a window has it open.
     ///
-    /// The current lists stay on screen while the same board is refreshed; they are only cleared when
-    /// switching boards. If loads overlap, only the most recent one's result is applied, so a slow
-    /// response for a previously selected board can never replace the current board's lists.
+    /// The current lists stay on screen while the board is refreshed; a board just opened shows its lists as saved on
+    /// the Mac, if they were, until the server's arrive. If loads of a board overlap, only the most recent one's
+    /// result is applied, so a slow response can never replace newer lists.
     func loadStacks(boardId: Int) async {
-        guard let api = deckAPI, selectedBoardId == boardId else { return }
-        stacksGeneration += 1
-        let generation = stacksGeneration
-        if stacksBoardId != boardId {
-            // The board's lists as saved on the Mac, if they were, while the server's are on their way.
-            stacksAreFromServer = false
-            stacksBoardId = boardId
-            stacks = cachedLists(of: boardId) ?? []
-            stacksFetchDate = nil
+        guard let api = deckAPI, openBoardIds.contains(boardId) else { return }
+        openLists(of: boardId)
+        let generation = (lists[boardId]?.generation ?? 0) + 1
+        updateLists(of: boardId) {
+            $0.generation = generation
+            $0.error = nil
+            $0.isLoading = true
         }
-        stacksError = nil
-        isLoadingStacks = true
 
         let started = now()
         let result: Result<Tagged<[Stack]>, Error>
@@ -323,49 +275,39 @@ final class AppState: ObservableObject {
             result = .failure(error)
         }
 
-        guard generation == stacksGeneration, selectedBoardId == boardId else { return }
-        isLoadingStacks = false
+        guard lists[boardId]?.generation == generation else { return }
         switch result {
         case let .success(loaded):
-            stacksAreFromServer = true
-            stacks = Self.sorted(loaded.value)
-            stacksETag = loaded.etag
-            stacksFetchDate = started
+            updateLists(of: boardId, newStacks: true) {
+                $0.isLoading = false
+                $0.isFromServer = true
+                $0.stacks = Self.sorted(loaded.value)
+                $0.etag = loaded.etag
+                $0.fetchDate = started
+            }
             serverWasReached()
 
         case let .failure(error):
-            stacksFetchDate = nil
+            updateLists(of: boardId) {
+                $0.isLoading = false
+                $0.fetchDate = nil
+            }
             guard !endSessionIfUnauthorized(error) else { return }
             if noteConnectionProblem(error) {
                 // The saved lists stay on screen under the offline banner; without them, say why there are none.
-                if stacks.isEmpty {
-                    stacksError = "This board's lists haven't been saved on this Mac yet, so they can't be shown "
-                        + "until the server can be reached."
+                if lists[boardId]?.stacks.isEmpty == true {
+                    updateLists(of: boardId) {
+                        $0.error = "This board's lists haven't been saved on this Mac yet, so they can't be shown "
+                            + "until the server can be reached."
+                    }
                 }
                 return
             }
             // A cancelled load (the board view went away) is not an error worth showing.
             if !(error is CancellationError), (error as? URLError)?.code != .cancelled {
-                stacksError = error.localizedDescription
+                updateLists(of: boardId) { $0.error = error.localizedDescription }
             }
         }
-    }
-
-    /// Clears the lists when no board is selected.
-    func clearStacks() {
-        stacksGeneration += 1
-        stacksAreFromServer = false
-        stacks = []
-        stacksBoardId = nil
-        stacksETag = nil
-        stacksFetchDate = nil
-        stacksError = nil
-        isLoadingStacks = false
-    }
-
-    func selectBoard(_ board: Board) {
-        // BoardDetailView's `.task(id: selectedBoardId)` loads the lists.
-        selectedBoardId = board.id
     }
 
     func refresh() async {
@@ -395,8 +337,7 @@ final class AppState: ObservableObject {
     /// The Deck API has no bulk reorder, so each moved stack is updated in turn. If one update fails the
     /// rest are not sent, the error is shown and the lists are reloaded so the screen matches the server.
     func reorderStacks(boardId: Int, fromIndex: Int, toIndex: Int) async {
-        guard let api = deckAPI, !isReorderingStacks,
-              selectedBoardId == boardId, stacksBoardId == boardId else { return }
+        guard let api = deckAPI, !isReorderingStacks, var stacks = lists[boardId]?.stacks else { return }
         guard fromIndex != toIndex,
               fromIndex >= 0, fromIndex < stacks.count,
               toIndex >= 0, toIndex <= stacks.count else { return }
@@ -413,6 +354,7 @@ final class AppState: ObservableObject {
         for (idx, _) in changes {
             stacks[idx].order = idx
         }
+        setStacks(stacks, of: boardId)
         for (newOrder, stack) in changes {
             do {
                 _ = try await api.updateStack(
@@ -434,11 +376,12 @@ final class AppState: ObservableObject {
     /// ignored.
     func renameStack(boardId: Int, stackId: Int, title: String) async {
         let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let api = deckAPI, !trimmed.isEmpty, stacksBoardId == boardId,
+        guard let api = deckAPI, !trimmed.isEmpty, var stacks = lists[boardId]?.stacks,
               let idx = stacks.firstIndex(where: { $0.id == stackId }),
               stacks[idx].title != trimmed else { return }
         let order = stacks[idx].order
         stacks[idx].title = trimmed
+        setStacks(stacks, of: boardId)
         do {
             _ = try await api.updateStack(boardId: boardId, stackId: stackId, title: trimmed, order: order)
         } catch {
@@ -499,6 +442,26 @@ final class AppState: ObservableObject {
 
 @MainActor
 extension AppState {
+    /// Boards that are not archived and not soft-deleted.
+    var activeBoards: [Board] {
+        boards.filter { !$0.archived && !$0.isDeleted }
+    }
+
+    /// Boards that are archived but not soft-deleted.
+    var archivedBoards: [Board] {
+        boards.filter { $0.archived && !$0.isDeleted }
+    }
+
+    /// Soft-deleted boards that can still be restored, most recently deleted first.
+    var deletedBoards: [Board] {
+        boards.filter(\.isDeleted).sorted { ($0.deletedAt ?? 0, $0.id) > ($1.deletedAt ?? 0, $1.id) }
+    }
+
+    /// The boards in the order the sidebar lists them.
+    var boardsInSidebarOrder: [Board] {
+        activeBoards + archivedBoards
+    }
+
     func archiveBoard(id: Int) async {
         guard let api = deckAPI,
               let board = boards.first(where: { $0.id == id }) else { return }
@@ -507,8 +470,8 @@ extension AppState {
             if let idx = boards.firstIndex(where: { $0.id == id }) {
                 boards[idx].archived = true
             }
-            if selectedBoardId == id {
-                selectedBoardId = activeBoards.first?.id
+            for window in windows where window.selectedBoardId == id {
+                window.selectedBoardId = activeBoards.first?.id
             }
         } catch {
             report(error)
@@ -569,16 +532,16 @@ extension AppState {
 
 @MainActor
 extension AppState {
-    /// Restores a deleted board and opens it. Deck before 1.17 refuses with 403 (a server bug, fixed in Deck 1.17.0);
-    /// the banner then says so instead of "Permission denied".
-    func restoreBoard(id: Int) async {
-        guard let api = deckAPI else { return }
+    /// Restores a deleted board; returns `true` if it was (`BoardWindow.restoreBoard` then opens it). Deck before
+    /// 1.17 refuses with 403 (a server bug, fixed in Deck 1.17.0); the banner then says so instead of "Permission
+    /// denied".
+    @discardableResult
+    func restoreBoard(id: Int) async -> Bool {
+        guard let api = deckAPI else { return false }
         do {
             try await api.undoDeleteBoard(id: id)
             await loadBoards()
-            if activeBoards.contains(where: { $0.id == id }) || archivedBoards.contains(where: { $0.id == id }) {
-                selectedBoardId = id
-            }
+            return true
         } catch DeckAPIError.permissionDenied {
             if let version = try? await api.deckVersion(), !DeckAPI.version(version, isAtLeast: "1.17") {
                 actionError = Self.restoreUnsupportedMessage(deckVersion: version)
@@ -588,6 +551,7 @@ extension AppState {
         } catch {
             report(error)
         }
+        return false
     }
 
     nonisolated static func restoreUnsupportedMessage(deckVersion: String) -> String {
@@ -603,8 +567,8 @@ extension AppState {
             if let idx = boards.firstIndex(where: { $0.id == id }) {
                 boards[idx].deletedAt = Int(Date().timeIntervalSince1970)
             }
-            if selectedBoardId == id {
-                selectedBoardId = activeBoards.first?.id
+            for window in windows where window.selectedBoardId == id {
+                window.selectedBoardId = activeBoards.first?.id
             }
         } catch {
             report(error)
@@ -616,28 +580,27 @@ extension AppState {
 
 @MainActor
 extension AppState {
-    /// Copies a board (see `DeckAPI.copyBoard`) and opens the copy, with `boardCopyProgress` counting the lists and
-    /// cards done. Returns `false` for a blank title or a failure, which sets `errorMessage` for the sheet; a failed
-    /// copy is deleted again.
-    func duplicateBoard(id: Int, options: BoardCopyOptions) async -> Bool {
+    /// Copies a board (see `DeckAPI.copyBoard`), with `boardCopyProgress` counting the lists and cards done, and
+    /// returns the copy's id (`BoardWindow.duplicateBoard` then opens it). Returns nil for a blank title or a failure,
+    /// which sets `errorMessage` for the sheet; a failed copy is deleted again.
+    func duplicateBoard(id: Int, options: BoardCopyOptions) async -> Int? {
         var options = options
         options.title = options.title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let api = deckAPI, !options.title.isEmpty,
-              let source = boards.first(where: { $0.id == id }) else { return false }
+              let source = boards.first(where: { $0.id == id }) else { return nil }
         boardCopyProgress = nil
         defer { boardCopyProgress = nil }
         do {
             let copy = try await api.copyBoard(source, options: options) { [weak self] done, total in
                 self?.boardCopyProgress = BoardCopyProgress(done: done, total: total)
             }
-            guard api === deckAPI else { return false }
+            guard api === deckAPI else { return nil }
             await loadBoards()
-            selectedBoardId = copy.id
-            return true
+            return copy.id
         } catch {
-            guard !endSessionIfUnauthorized(error) else { return false }
+            guard !endSessionIfUnauthorized(error) else { return nil }
             errorMessage = error.localizedDescription
-            return false
+            return nil
         }
     }
 }
@@ -670,13 +633,11 @@ extension AppState {
             serverWasReached(boardsSyncedAt: now())
             boardsChanged = fetched != nil
             if let fetched {
+                // A window whose board was deleted elsewhere opens another (see `BoardWindow.boardsDidChange`), and
+                // its `.task(id: selectedBoardId)` loads it.
                 boards = fetched.value
                 boardsETag = fetched.etag
                 boardsETagDate = now()
-                if let selected = selectedBoardId, !boards.contains(where: { $0.id == selected && !$0.isDeleted }) {
-                    // The selected board was deleted elsewhere; `.task(id: selectedBoardId)` loads the next one.
-                    selectedBoardId = activeBoards.first?.id
-                }
             }
         } catch {
             if api === deckAPI, !endSessionIfUnauthorized(error) {
@@ -685,22 +646,30 @@ extension AppState {
             return
         }
 
-        guard let boardId = selectedBoardId, stacksBoardId == boardId, !isLoadingStacks else { return }
-        if !boardsChanged, stacksETag == nil, listsAreSettled {
+        for boardId in openBoardIds.sorted() {
+            guard api === deckAPI else { return }
+            await refreshLists(of: boardId, api: api, boardsChanged: boardsChanged)
+        }
+    }
+
+    /// `refreshIfChanged` for one open board's lists.
+    private func refreshLists(of boardId: Int, api: DeckAPI, boardsChanged: Bool) async {
+        guard let entry = lists[boardId], !entry.isLoading else { return }
+        if !boardsChanged, entry.etag == nil, listsAreSettled(entry) {
             listsAreCurrent(boardId: boardId)
             return
         }
-        let generation = stacksGeneration
         let started = now()
         do {
-            guard let fetched = try await api.fetchStacks(boardId: boardId, ifNoneMatch: stacksETag) else { return }
-            guard generation == stacksGeneration, selectedBoardId == boardId,
-                  !isReorderingStacks, !isDraggingStack else { return }
-            stacksAreFromServer = true
-            stacks = Self.sorted(fetched.value)
-            stacksETag = fetched.etag
-            stacksFetchDate = started
-            stacksError = nil
+            guard let fetched = try await api.fetchStacks(boardId: boardId, ifNoneMatch: entry.etag) else { return }
+            guard lists[boardId]?.generation == entry.generation, !isReorderingStacks, !isDraggingStack else { return }
+            updateLists(of: boardId, newStacks: true) {
+                $0.isFromServer = true
+                $0.stacks = Self.sorted(fetched.value)
+                $0.etag = fetched.etag
+                $0.fetchDate = started
+                $0.error = nil
+            }
         } catch {
             if api === deckAPI {
                 endSessionIfUnauthorized(error)
@@ -708,10 +677,10 @@ extension AppState {
         }
     }
 
-    /// Whether the lists on screen were requested well after the board list's ETag arrived, so an unchanged board
-    /// list means they are current. The margin covers Deck's whole-second ETags.
-    private var listsAreSettled: Bool {
-        guard let fetched = stacksFetchDate, let etagDate = boardsETagDate else { return false }
+    /// Whether `lists` were requested well after the board list's ETag arrived, so an unchanged board list means
+    /// they are current. The margin covers Deck's whole-second ETags.
+    private func listsAreSettled(_ lists: BoardLists) -> Bool {
+        guard let fetched = lists.fetchDate, let etagDate = boardsETagDate else { return false }
         return fetched.timeIntervalSince(etagDate) >= 1.5
     }
 
@@ -830,7 +799,9 @@ extension AppState {
             try await $0.deleteLabel(boardId: boardId, labelId: label.id)
         }
         if deleted {
-            cardFilter.labelIds.remove(label.id)
+            for window in windows {
+                window.cardFilter.labelIds.remove(label.id)
+            }
         }
         return deleted
     }
@@ -928,17 +899,18 @@ extension AppState {
         }
     }
 
-    /// Creates a card at the end of the list and selects it.
-    func createCard(boardId: Int, stackId: Int, title: String) async {
-        guard let api = deckAPI else { return }
+    /// Creates a card at the end of the list and returns its id (`BoardWindow.createCard` then selects it); nil on
+    /// failure, which goes to the banner.
+    @discardableResult
+    func createCard(boardId: Int, stackId: Int, title: String) async -> Int? {
+        guard let api = deckAPI else { return nil }
         do {
             let card = try await api.createCard(boardId: boardId, stackId: stackId, title: title)
             await loadStacks(boardId: boardId)
-            if selectedBoardId == boardId {
-                selectedCardId = card.id
-            }
+            return card.id
         } catch {
             report(error)
+            return nil
         }
     }
 
@@ -1039,10 +1011,10 @@ extension AppState {
     func reorderCard(boardId: Int, fromStackId: Int, cardId: Int, toStackId: Int, order: Int) async {
         guard let api = deckAPI else { return }
         // Show the move straight away; the reload below (or after a failure) replaces it with the server's lists.
-        if stacksBoardId == boardId, let moved = stacks.movingCard(cardId, toStack: toStackId, at: order) {
+        if let moved = lists[boardId]?.stacks.movingCard(cardId, toStack: toStackId, at: order) {
             // Drop any refresh already in flight, so it can't put the card back where it was.
-            stacksGeneration += 1
-            stacks = moved
+            updateLists(of: boardId) { $0.generation += 1 }
+            setStacks(moved, of: boardId)
         }
         do {
             try await api.reorderCard(
@@ -1248,14 +1220,15 @@ extension AppState {
         stopRecordingCache()
         connectionProblem = nil
         boards = []
-        selectedBoardId = nil
+        lists = [:]
         boardsETag = nil
         boardsETagDate = nil
         serverDeckVersion = nil
         checkedDeckVersion = false
         activityIsUnavailable = false
-        clearStacks()
-        cardFilter = CardFilter()
+        for window in windows {
+            window.sessionDidReset()
+        }
         actionError = nil
         errorMessage = nil
     }
@@ -1336,29 +1309,19 @@ extension AppState {
         await loadAllCards(includingArchived: true)
     }
 
-    /// What searching finds on `board`: the open board's lists as shown, else the board's cards from `allCards`.
+    /// What searching finds on `board`: its lists as shown if a window has it open and they've come from the server,
+    /// else its cards from `allCards`, else what the Mac has.
     func searchableCards(of board: Board) -> SearchableCards {
         let cards = allCards[board.id]
-        let stacks = board.id == stacksBoardId && board.id == selectedBoardId
-            ? stacks
-            : cards?.stacks ?? cachedLists(of: board.id) ?? []
-        return SearchableCards(stacks: stacks, archivedStacks: cards?.archivedStacks ?? [])
+        let open = lists[board.id]
+        let stacks = open?.isFromServer == true ? open?.stacks : cards?.stacks ?? open?
+            .stacks ?? cachedLists(of: board.id)
+        return SearchableCards(stacks: stacks ?? [], archivedStacks: cards?.archivedStacks ?? [])
     }
 
-    /// The cards matching the sidebar's search, grouped by board.
-    var cardSearchResults: [BoardSearchResults] {
-        CardSearch.results(for: cardSearchText, in: boardsInSidebarOrder, cards: searchableCards(of:))
-    }
-
-    /// Opens a search result's board and the card; an archived card shows in the board's archived cards.
-    func open(_ result: CardSearchResult) {
-        selectedBoardId = result.boardId
-        if result.card.archived {
-            showingArchivedCards = true
-        } else {
-            selectedCardId = result.card.id
-            openedCard = result.card
-        }
+    /// The cards matching `text`, grouped by board, for a window's sidebar search.
+    func cardSearchResults(for text: String) -> [BoardSearchResults] {
+        CardSearch.results(for: text, in: boardsInSidebarOrder, cards: searchableCards(of:))
     }
 }
 
@@ -1388,21 +1351,6 @@ extension AppState {
         let userId = reminders.userId(for: account.id) ?? account.username
         await reminders.update(cards: remindableCards, userId: userId, accountId: account.id, now: now())
     }
-
-    /// Opens a card from a clicked notification: switches to its account if need be, then opens its board and the
-    /// card. Does nothing if the account has signed out or the card has gone.
-    func openCard(id cardId: Int, boardId: Int, accountId: Account.ID) async {
-        if activeAccount?.id != accountId, let account = accounts.first(where: { $0.id == accountId }) {
-            await switchAccount(to: account)
-        }
-        guard activeAccount?.id == accountId, boards.contains(where: { $0.id == boardId }) else { return }
-        selectedBoardId = boardId
-        await loadStacks(boardId: boardId)
-        guard selectedBoardId == boardId,
-              let card = stacks.lazy.flatMap(\.activeCards).first(where: { $0.id == cardId }) else { return }
-        selectedCardId = card.id
-        openedCard = card
-    }
 }
 
 // MARK: - The copy on the Mac, and working offline (#156)
@@ -1416,9 +1364,9 @@ extension AppState {
         connectionProblem != nil
     }
 
-    /// When what's shown last came from the server: the open board's lists, else the board list.
-    var offlineDataDate: Date? {
-        if let id = selectedBoardId, let lists = cacheSnapshot?.lists[id] {
+    /// When what's shown last came from the server: `boardId`'s lists, else the board list.
+    func offlineDataDate(boardId: Int?) -> Date? {
+        if let id = boardId, let lists = cacheSnapshot?.lists[id] {
             return lists.syncedAt
         }
         return cacheSnapshot?.boardsSyncedAt
@@ -1429,18 +1377,13 @@ extension AppState {
         cacheSnapshot?.lists[boardId].map { Self.sorted($0.stacks) }
     }
 
-    /// Shows the active account's boards as saved on the Mac, opening the board that was open, and starts recording
-    /// what the server sends.
+    /// Shows the active account's boards as saved on the Mac, with windows opening the board that was open (see
+    /// `boardToOpen`), and starts recording what the server sends.
     private func restoreFromCache() {
         guard let account = activeAccount else { return }
         let snapshot = boardCache?.load(accountId: account.id) ?? BoardCacheSnapshot()
         cacheSnapshot = snapshot
         boards = snapshot.boards
-        if let id = snapshot.selectedBoardId, boards.contains(where: { $0.id == id && !$0.isDeleted }) {
-            selectedBoardId = id
-            stacksBoardId = id
-            stacks = cachedLists(of: id) ?? []
-        }
         cacheAccountId = account.id
     }
 
@@ -1454,9 +1397,10 @@ extension AppState {
         scheduleCacheWrite()
     }
 
-    private func recordSelectedBoard() {
-        guard cacheAccountId != nil else { return }
-        cacheSnapshot?.selectedBoardId = selectedBoardId
+    /// Records the board a window opened, to open again at launch.
+    private func recordSelectedBoard(_ boardId: Int?) {
+        guard cacheAccountId != nil, cacheSnapshot?.selectedBoardId != boardId else { return }
+        cacheSnapshot?.selectedBoardId = boardId
         scheduleCacheWrite()
     }
 
@@ -1467,10 +1411,10 @@ extension AppState {
         scheduleCacheWrite()
     }
 
-    /// The open board's lists were found to be unchanged on the server.
+    /// An open board's lists were found to be unchanged on the server.
     private func listsAreCurrent(boardId: Int) {
-        if stacksAreFromServer {
-            recordLists(stacks, boardId: boardId)
+        if let entry = lists[boardId], entry.isFromServer {
+            recordLists(entry.stacks, boardId: boardId)
         }
     }
 
@@ -1542,5 +1486,92 @@ extension AppState {
         if connectionProblem == nil {
             await updateReminders()
         }
+    }
+}
+
+// MARK: - Windows and their boards' lists (#160)
+
+/// The lists and cards of a board open in a window, in `AppState.lists`.
+struct BoardLists {
+    var stacks: [Stack] = []
+    /// Whether `stacks` came from the server (and changes made since), rather than from the copy on the Mac.
+    var isFromServer = false
+    var isLoading = false
+    var error: String?
+    /// The lists' ETag, if Deck sent one, and when they were requested, for `refreshIfChanged()`.
+    var etag: String?
+    var fetchDate: Date?
+    /// Incremented by every load of the board's lists; a response is only applied if no newer load has started.
+    var generation = 0
+}
+
+@MainActor
+extension AppState {
+    /// The open windows.
+    var windows: [BoardWindow] {
+        windowRefs.compactMap(\.window)
+    }
+
+    /// The boards open in windows.
+    var openBoardIds: Set<Int> {
+        Set(windows.compactMap(\.selectedBoardId))
+    }
+
+    /// Whether a list is being dragged in any window, which holds off the background refresh.
+    var isDraggingStack: Bool {
+        windows.contains(where: \.isDraggingStack)
+    }
+
+    /// Keeps track of `window` (without keeping it open), so changes to the boards reach it.
+    func register(_ window: BoardWindow) {
+        windowRefs = windowRefs.filter { $0.window != nil } + [WeakBoardWindow(window: window)]
+    }
+
+    /// Whether a window can show `boardId`: it's in the board list and not deleted.
+    func canOpen(_ boardId: Int) -> Bool {
+        boards.contains { $0.id == boardId && !$0.isDeleted }
+    }
+
+    /// The board a window opens when it has none: the one open last, else the first in the sidebar.
+    var boardToOpen: Int? {
+        if let id = cacheSnapshot?.selectedBoardId, canOpen(id) {
+            return id
+        }
+        return (activeBoards.first ?? archivedBoards.first)?.id
+    }
+
+    /// `window` opened `boardId` (or closed its board, for nil): shows the board's lists, as saved on the Mac until
+    /// they load, and lets go of the lists of boards no window shows.
+    func window(_ window: BoardWindow, opened boardId: Int?) {
+        if let boardId {
+            openLists(of: boardId)
+            recordSelectedBoard(boardId)
+        }
+        let open = openBoardIds
+        if lists.keys.contains(where: { !open.contains($0) }) {
+            lists = lists.filter { open.contains($0.key) }
+        }
+    }
+
+    /// Starts `boardId`'s lists from the copy on the Mac, unless they're already open.
+    private func openLists(of boardId: Int) {
+        guard lists[boardId] == nil else { return }
+        lists[boardId] = BoardLists(stacks: cachedLists(of: boardId) ?? [])
+    }
+
+    /// Changes `boardId`'s lists, if they're open. With `newStacks`, the change gave it new lists, which the copy on
+    /// the Mac records if they're the server's.
+    private func updateLists(of boardId: Int, newStacks: Bool = false, _ change: (inout BoardLists) -> Void) {
+        guard var entry = lists[boardId] else { return }
+        change(&entry)
+        lists[boardId] = entry
+        if newStacks, entry.isFromServer {
+            recordLists(entry.stacks, boardId: boardId)
+        }
+    }
+
+    /// Shows `stacks` as `boardId`'s lists, ahead of the server, as when a card or list is moved.
+    private func setStacks(_ stacks: [Stack], of boardId: Int) {
+        updateLists(of: boardId, newStacks: true) { $0.stacks = stacks }
     }
 }

@@ -32,7 +32,7 @@ final class AppStateTests: XCTestCase {
     /// An `AppState` signed in against the stub, with board 1 selected and its lists loaded.
     private func makeSignedInApp() async -> AppState {
         let app = AppState(credentialStore: store, session: StubURLProtocol.session(), openURL: { _ in })
-        await waitUntil { app.selectedBoardId == 1 && !app.isLoading }
+        await waitUntil { app.window.selectedBoardId == 1 && !app.isLoading }
         await app.loadStacks(boardId: 1)
         return app
     }
@@ -51,12 +51,12 @@ final class AppStateTests: XCTestCase {
 
         let slow = Task { await app.loadStacks(boardId: 1) }
         await sleep(seconds: 0.05)
-        app.selectBoard(app.boards[1])
+        app.window.selectBoard(app.boards[1])
         await app.loadStacks(boardId: 2)
         await slow.value
 
-        XCTAssertEqual(app.stacks.map(\.boardId), [2])
-        XCTAssertFalse(app.isLoadingStacks)
+        XCTAssertEqual(app.window.stacks.map(\.boardId), [2])
+        XCTAssertFalse(app.window.isLoadingStacks)
     }
 
     func testRefreshingSameBoardKeepsListsVisible() async {
@@ -70,8 +70,8 @@ final class AppStateTests: XCTestCase {
 
         let refresh = Task { await app.loadStacks(boardId: 1) }
         await sleep(seconds: 0.1)
-        XCTAssertTrue(app.isLoadingStacks)
-        XCTAssertEqual(app.stacks.map(\.id), [10, 20], "lists must not flash empty while refreshing")
+        XCTAssertTrue(app.window.isLoadingStacks)
+        XCTAssertEqual(app.window.stacks.map(\.id), [10, 20], "lists must not flash empty while refreshing")
         await refresh.value
     }
 
@@ -167,7 +167,7 @@ final class AppStateTests: XCTestCase {
             return .json(Self.stacksJSON(serverOrder.withLock { $0 }, board: 1))
         }
         let app = await makeSignedInApp()
-        XCTAssertEqual(app.stacks.map(\.id), [10, 20, 30, 40])
+        XCTAssertEqual(app.window.stacks.map(\.id), [10, 20, 30, 40])
 
         // Move the last list to the front: 40 is saved, then 10's update fails.
         await app.reorderStacks(boardId: 1, fromIndex: 3, toIndex: 0)
@@ -175,7 +175,11 @@ final class AppStateTests: XCTestCase {
         let puts = StubURLProtocol.requests.filter { $0.method == "PUT" }.map { $0.path.split(separator: "/").last }
         XCTAssertEqual(puts, ["40", "10"], "stops after the failed update")
         XCTAssertNotNil(app.actionError)
-        XCTAssertEqual(app.stacks.map(\.id), serverOrder.withLock { $0 }, "the board shows what the server saved")
+        XCTAssertEqual(
+            app.window.stacks.map(\.id),
+            serverOrder.withLock { $0 },
+            "the board shows what the server saved"
+        )
     }
 
     // MARK: - Due dates and done state (#73)
@@ -315,15 +319,15 @@ final class AppStateTests: XCTestCase {
 
     func testRefreshPicksUpChangesMadeElsewhere() async {
         let (app, deck) = await makeFakeDeckApp()
-        XCTAssertEqual(app.stacks.map(\.id), [10, 20])
+        XCTAssertEqual(app.window.stacks.map(\.id), [10, 20])
 
         deck.state.withLock { $0.stackIds = [10, 20, 30]
             $0.version = 2
         }
         await app.refreshIfChanged()
 
-        XCTAssertEqual(app.stacks.map(\.id), [10, 20, 30])
-        XCTAssertFalse(app.isLoadingStacks)
+        XCTAssertEqual(app.window.stacks.map(\.id), [10, 20, 30])
+        XCTAssertFalse(app.window.isLoadingStacks)
     }
 
     func testUnchangedRefreshIsAConditionalNoOp() async {
@@ -335,7 +339,7 @@ final class AppStateTests: XCTestCase {
         let refreshRequests = StubURLProtocol.requests.dropFirst(before)
         XCTAssertEqual(refreshRequests.count, 2, "one conditional request for boards, one for lists")
         XCTAssertTrue(refreshRequests.allSatisfy { $0.header("If-None-Match") == "\"v1\"" })
-        XCTAssertEqual(app.stacks.map(\.id), [10, 20])
+        XCTAssertEqual(app.window.stacks.map(\.id), [10, 20])
     }
 
     /// An app whose clock the test moves: `clock` starts when the boards and lists were loaded.
@@ -346,7 +350,7 @@ final class AppStateTests: XCTestCase {
         StubURLProtocol.handler = { deck.handle($0) }
         let app = AppState(credentialStore: store, session: StubURLProtocol.session(), openURL: { _ in })
         app.now = { clock.withLock { $0 } }
-        await waitUntil { app.selectedBoardId == 1 && !app.isLoading }
+        await waitUntil { app.window.selectedBoardId == 1 && !app.isLoading }
         await app.loadStacks(boardId: 1)
         return (app, deck, clock)
     }
@@ -372,7 +376,7 @@ final class AppStateTests: XCTestCase {
             ["GET /index.php/apps/deck/api/v1.0/boards?details=true"],
             "unchanged board list: no lists download"
         )
-        XCTAssertEqual(app.stacks.map(\.id), [10, 20])
+        XCTAssertEqual(app.window.stacks.map(\.id), [10, 20])
     }
 
     func testChangedBoardListDownloadsTheLists() async {
@@ -386,7 +390,7 @@ final class AppStateTests: XCTestCase {
         clock.withLock { $0 += 60 }
         await app.refreshIfChanged()
 
-        XCTAssertEqual(app.stacks.map(\.id), [10, 20, 30])
+        XCTAssertEqual(app.window.stacks.map(\.id), [10, 20, 30])
     }
 
     /// A change in the same second as the board list's ETag doesn't change it; the lists still pick it up.
@@ -397,7 +401,7 @@ final class AppStateTests: XCTestCase {
         clock.withLock { $0 += 0.5 }
         await app.refreshIfChanged()
 
-        XCTAssertEqual(app.stacks.map(\.id), [10, 20, 30])
+        XCTAssertEqual(app.window.stacks.map(\.id), [10, 20, 30])
     }
 
     func testRefreshErrorsAreSilent() async {
@@ -407,8 +411,8 @@ final class AppStateTests: XCTestCase {
         await app.refreshIfChanged()
 
         XCTAssertNil(app.actionError)
-        XCTAssertNil(app.stacksError)
-        XCTAssertEqual(app.stacks.map(\.id), [10, 20], "keeps the lists it has")
+        XCTAssertNil(app.window.stacksError)
+        XCTAssertEqual(app.window.stacks.map(\.id), [10, 20], "keeps the lists it has")
     }
 
     func testRefreshMovesOffABoardDeletedElsewhere() async {
@@ -419,7 +423,7 @@ final class AppStateTests: XCTestCase {
 
         await app.refreshIfChanged()
 
-        XCTAssertEqual(app.selectedBoardId, 2)
+        XCTAssertEqual(app.window.selectedBoardId, 2)
     }
 
     func testRefreshSignsOutWhenThePasswordIsRevoked() async {
@@ -556,7 +560,7 @@ extension AppStateTests {
         let move = Task { await app.moveCard(boardId: 1, cardId: 5, fromStackId: 10, toStackId: 20, order: 0) }
         await waitUntil { moved.withLock { $0 } }
 
-        XCTAssertEqual(app.stacks.map { $0.activeCards.map(\.id) }, [[], [5]], "no snapping back while saving")
+        XCTAssertEqual(app.window.stacks.map { $0.activeCards.map(\.id) }, [[], [5]], "no snapping back while saving")
         await move.value
     }
 
@@ -574,7 +578,7 @@ extension AppStateTests {
 
         await app.moveCard(boardId: 1, cardId: 5, fromStackId: 10, toStackId: 20, order: 0)
 
-        XCTAssertEqual(app.stacks.map { $0.activeCards.map(\.id) }, [[5], []])
+        XCTAssertEqual(app.window.stacks.map { $0.activeCards.map(\.id) }, [[5], []])
         XCTAssertNotNil(app.actionError)
     }
 }
@@ -604,7 +608,7 @@ extension AppStateTests {
         XCTAssertEqual(sent.map(\.line), ["PUT /index.php/apps/deck/api/v1.0/boards/2"], "no reload needed")
         XCTAssertEqual(sent.first?.json?["title"] as? String, "Renamed", "title is trimmed")
         XCTAssertEqual(sent.first?.json?["archived"] as? Bool, false)
-        XCTAssertEqual(app.selectedBoardId, 1, "editing another board keeps the open one")
+        XCTAssertEqual(app.window.selectedBoardId, 1, "editing another board keeps the open one")
     }
 
     func testFailedBoardEditKeepsTheBoardAndExplains() async {
@@ -661,7 +665,7 @@ extension AppStateTests {
 
         let rename = Task { await app.renameStack(boardId: 1, stackId: 20, title: " Finished ") }
         await waitUntil { saving.withLock { $0 } }
-        XCTAssertEqual(app.stacks.map(\.title), ["S10", "Finished"], "new title shown while saving")
+        XCTAssertEqual(app.window.stacks.map(\.title), ["S10", "Finished"], "new title shown while saving")
         await rename.value
 
         let sent = StubURLProtocol.requests.dropFirst(before)
@@ -669,7 +673,7 @@ extension AppStateTests {
         let body = try XCTUnwrap(sent.first?.json)
         XCTAssertEqual(body["title"] as? String, "Finished")
         XCTAssertEqual(body["order"] as? Int, 1, "the list keeps its place")
-        XCTAssertEqual(app.stacks.map(\.id), [10, 20])
+        XCTAssertEqual(app.window.stacks.map(\.id), [10, 20])
         XCTAssertNil(app.actionError)
     }
 
@@ -687,7 +691,7 @@ extension AppStateTests {
 
         await app.renameStack(boardId: 1, stackId: 10, title: "Renamed")
 
-        XCTAssertEqual(app.stacks.map(\.title), ["S10", "S20"])
+        XCTAssertEqual(app.window.stacks.map(\.title), ["S10", "S20"])
         XCTAssertEqual(app.actionError, DeckAPIError.permissionDenied.localizedDescription)
     }
 
@@ -702,7 +706,7 @@ extension AppStateTests {
         await app.renameStack(boardId: 1, stackId: 10, title: "S10 ")
 
         XCTAssertEqual(StubURLProtocol.requests.count, before)
-        XCTAssertEqual(app.stacks.map(\.title), ["S10"])
+        XCTAssertEqual(app.window.stacks.map(\.title), ["S10"])
     }
 }
 
@@ -730,7 +734,7 @@ extension AppStateTests {
             return .json(Self.stacksJSON([10], board: 1))
         }
         let app = AppState(credentialStore: store, session: StubURLProtocol.session(), openURL: { _ in })
-        await waitUntil { app.selectedBoardId == 1 && !app.isLoading }
+        await waitUntil { app.window.selectedBoardId == 1 && !app.isLoading }
         await app.loadStacks(boardId: 1)
         return app
     }
@@ -756,12 +760,12 @@ extension AppStateTests {
     func testDeletingALabelStopsFilteringByIt() async throws {
         let app = await makeLabelledApp()
         let label = try XCTUnwrap(app.boards.first?.labels.first)
-        app.cardFilter.labelIds = [7, 8]
+        app.window.cardFilter.labelIds = [7, 8]
 
         let deleted = await app.deleteLabel(label, boardId: 1)
 
         XCTAssertTrue(deleted)
-        XCTAssertEqual(app.cardFilter.labelIds, [8])
+        XCTAssertEqual(app.window.cardFilter.labelIds, [8])
         XCTAssertEqual(StubURLProtocol.requests.map(\.line).suffix(3), [
             "DELETE /index.php/apps/deck/api/v1.0/boards/1/labels/7",
             "GET /index.php/apps/deck/api/v1.0/boards/1",
@@ -772,7 +776,7 @@ extension AppStateTests {
     func testLabelFailuresGoToTheBanner() async throws {
         let app = await makeLabelledApp(failing: true)
         let label = try XCTUnwrap(app.boards.first?.labels.first)
-        app.cardFilter.labelIds = [7]
+        app.window.cardFilter.labelIds = [7]
 
         let deleted = await app.deleteLabel(label, boardId: 1)
         let renamed = await app.updateLabel(label, boardId: 1, title: "Critical", color: "9C59B6")
@@ -780,7 +784,7 @@ extension AppStateTests {
         XCTAssertFalse(deleted)
         XCTAssertFalse(renamed)
         XCTAssertEqual(app.actionError, "Label is in use")
-        XCTAssertEqual(app.cardFilter.labelIds, [7], "a label that wasn't deleted stays in the filter")
+        XCTAssertEqual(app.window.cardFilter.labelIds, [7], "a label that wasn't deleted stays in the filter")
         XCTAssertEqual(app.boards.first?.labels.map(\.title), ["Urgent", "Later"])
     }
 
@@ -835,38 +839,38 @@ extension AppStateTests {
 
         XCTAssertEqual(app.activeBoards.map(\.id), [2])
         XCTAssertEqual(app.deletedBoards.map(\.id), [1, 3], "most recently deleted first")
-        XCTAssertEqual(app.selectedBoardId, 2, "moves to a board that isn't deleted")
+        XCTAssertEqual(app.window.selectedBoardId, 2, "moves to a board that isn't deleted")
         XCTAssertNil(app.actionError)
     }
 
     func testRestoringABoardOpensIt() async {
         let app = await makeAppWithDeletedBoard()
 
-        await app.restoreBoard(id: 3)
+        await app.window.restoreBoard(id: 3)
 
         XCTAssertTrue(StubURLProtocol.requests.map(\.line).contains(
             "POST /index.php/apps/deck/api/v1.0/boards/3/undo_delete"
         ))
         XCTAssertEqual(app.activeBoards.map(\.id), [1, 2, 3])
         XCTAssertTrue(app.deletedBoards.isEmpty)
-        XCTAssertEqual(app.selectedBoardId, 3)
+        XCTAssertEqual(app.window.selectedBoardId, 3)
         XCTAssertNil(app.actionError)
     }
 
     func testRestoreOnDeckBefore117ExplainsWhy() async {
         let app = await makeAppWithDeletedBoard(restoreStatus: 403, deckVersion: "1.16.8")
 
-        await app.restoreBoard(id: 3)
+        await app.window.restoreBoard(id: 3)
 
         XCTAssertEqual(app.actionError, AppState.restoreUnsupportedMessage(deckVersion: "1.16.8"))
         XCTAssertEqual(app.deletedBoards.map(\.id), [3])
-        XCTAssertEqual(app.selectedBoardId, 1)
+        XCTAssertEqual(app.window.selectedBoardId, 1)
     }
 
     func testRestoreRefusedOnNewerDeckIsPermissionDenied() async {
         let app = await makeAppWithDeletedBoard(restoreStatus: 403, deckVersion: "1.18.5")
 
-        await app.restoreBoard(id: 3)
+        await app.window.restoreBoard(id: 3)
 
         XCTAssertEqual(app.actionError, DeckAPIError.permissionDenied.localizedDescription)
     }
@@ -888,7 +892,7 @@ extension AppStateTests {
 
         await app.refreshIfChanged()
 
-        XCTAssertEqual(app.selectedBoardId, 2)
+        XCTAssertEqual(app.window.selectedBoardId, 2)
         XCTAssertEqual(app.deletedBoards.map(\.id), [1])
     }
 
@@ -903,7 +907,7 @@ extension AppStateTests {
 
         await waitUntil { !app.boards.isEmpty && !app.isLoading }
 
-        XCTAssertEqual(app.selectedBoardId, 2)
+        XCTAssertEqual(app.window.selectedBoardId, 2)
     }
 }
 
@@ -948,13 +952,13 @@ extension AppStateTests {
         let app = await makeCopyingApp()
         let before = StubURLProtocol.requests.count
 
-        let duplicated = await app.duplicateBoard(
+        let duplicated = await app.window.duplicateBoard(
             id: 1,
             options: BoardCopyOptions(title: " One (copy) ", withCards: true)
         )
 
         XCTAssertTrue(duplicated, app.errorMessage ?? "")
-        XCTAssertEqual(app.selectedBoardId, 9)
+        XCTAssertEqual(app.window.selectedBoardId, 9)
         XCTAssertNil(app.boardCopyProgress, "progress cleared when done")
         let sent = StubURLProtocol.requests.dropFirst(before)
         let create = sent.first { $0.method == "POST" && $0.path.hasSuffix("/boards") }
@@ -969,11 +973,14 @@ extension AppStateTests {
     func testFailedDuplicateIsDeletedAndExplained() async {
         let app = await makeCopyingApp(failLists: true)
 
-        let duplicated = await app.duplicateBoard(id: 1, options: BoardCopyOptions(title: "Copy", withCards: true))
+        let duplicated = await app.window.duplicateBoard(
+            id: 1,
+            options: BoardCopyOptions(title: "Copy", withCards: true)
+        )
 
         XCTAssertFalse(duplicated)
         XCTAssertNotNil(app.errorMessage, "shown in the sheet")
-        XCTAssertEqual(app.selectedBoardId, 1)
+        XCTAssertEqual(app.window.selectedBoardId, 1)
         XCTAssertNil(app.boardCopyProgress)
         XCTAssertEqual(
             StubURLProtocol.requests.last?.line,
@@ -1088,57 +1095,57 @@ extension AppStateTests {
     func testTheArrowKeysMoveTheSelection() async {
         let app = await makeKeyboardApp()
 
-        app.selectCard(.down)
-        XCTAssertEqual(app.selectedCardId, 1, "nothing selected: the first card")
-        app.selectCard(.down)
-        app.selectCard(.right)
-        XCTAssertEqual(app.selectedCardId, 4)
-        app.selectCard(.left)
-        XCTAssertEqual(app.selectedCardId, 1)
+        app.window.selectCard(.down)
+        XCTAssertEqual(app.window.selectedCardId, 1, "nothing selected: the first card")
+        app.window.selectCard(.down)
+        app.window.selectCard(.right)
+        XCTAssertEqual(app.window.selectedCardId, 4)
+        app.window.selectCard(.left)
+        XCTAssertEqual(app.window.selectedCardId, 1)
 
-        app.cardFilter.text = "Three"
-        XCTAssertNil(app.selectedCard, "hidden by the filter")
-        app.selectCard(.down)
-        XCTAssertEqual(app.selectedCardId, 3)
+        app.window.cardFilter.text = "Three"
+        XCTAssertNil(app.window.selectedCard, "hidden by the filter")
+        app.window.selectCard(.down)
+        XCTAssertEqual(app.window.selectedCardId, 3)
     }
 
     func testSwitchingBoardsClearsTheSelection() async {
         let app = await makeKeyboardApp()
-        app.selectedCardId = 2
-        app.newCardListId = 10
+        app.window.selectedCardId = 2
+        app.window.newCardListId = 10
 
-        app.selectBoard(offset: 1)
+        app.window.selectBoard(offset: 1)
 
-        XCTAssertEqual(app.selectedBoardId, 2)
-        XCTAssertNil(app.selectedCardId)
-        XCTAssertNil(app.newCardListId)
-        app.selectBoard(offset: 1)
-        XCTAssertEqual(app.selectedBoardId, 2, "no board after the last")
-        app.selectBoard(offset: -1)
-        XCTAssertEqual(app.selectedBoardId, 1)
+        XCTAssertEqual(app.window.selectedBoardId, 2)
+        XCTAssertNil(app.window.selectedCardId)
+        XCTAssertNil(app.window.newCardListId)
+        app.window.selectBoard(offset: 1)
+        XCTAssertEqual(app.window.selectedBoardId, 2, "no board after the last")
+        app.window.selectBoard(offset: -1)
+        XCTAssertEqual(app.window.selectedBoardId, 1)
     }
 
     func testMovingTheSelectedCardToTheNextList() async {
         let app = await makeKeyboardApp { request in
             request.path.hasSuffix("/reorder") ? .json("[]") : nil
         }
-        app.selectedCardId = 2
+        app.window.selectedCardId = 2
 
-        await app.moveSelectedCard(.right)
+        await app.window.moveSelectedCard(.right)
 
         XCTAssertTrue(StubURLProtocol.requests.contains {
             $0.line == "PUT /index.php/apps/deck/api/v1.0/boards/1/stacks/20/cards/2/reorder"
         })
-        XCTAssertEqual(app.selectedCardId, 2, "still selected")
+        XCTAssertEqual(app.window.selectedCardId, 2, "still selected")
     }
 
     func testMovingIsOffWhileFiltering() async {
         let app = await makeKeyboardApp()
-        app.selectedCardId = 2
-        app.cardFilter.text = "Two"
+        app.window.selectedCardId = 2
+        app.window.cardFilter.text = "Two"
 
-        XCTAssertFalse(app.canMoveSelectedCard)
-        await app.moveSelectedCard(.right)
+        XCTAssertFalse(app.window.canMoveSelectedCard)
+        await app.window.moveSelectedCard(.right)
 
         XCTAssertFalse(StubURLProtocol.requests.contains { $0.path.hasSuffix("/reorder") })
     }
@@ -1158,44 +1165,44 @@ extension AppStateTests {
             }
             return nil
         }
-        app.selectedCardId = 2
+        app.window.selectedCardId = 2
 
-        await app.archiveSelectedCard()
+        await app.window.archiveSelectedCard()
 
-        XCTAssertEqual(app.selectedCardId, 3)
+        XCTAssertEqual(app.window.selectedCardId, 3)
     }
 
     func testDeletingTheSelectedCardAsksFirstThenSelectsTheOneBefore() async {
         let app = await makeKeyboardApp { request in
             request.method == "DELETE" ? .json("{}") : nil
         }
-        app.selectedCardId = 3
+        app.window.selectedCardId = 3
 
-        app.requestDeletingSelectedCard()
-        XCTAssertEqual(app.cardPendingDelete?.id, 3)
+        app.window.requestDeletingSelectedCard()
+        XCTAssertEqual(app.window.cardPendingDelete?.id, 3)
         XCTAssertFalse(StubURLProtocol.requests.contains { $0.method == "DELETE" }, "not before it's confirmed")
-        await app.deletePendingCard()
+        await app.window.deletePendingCard()
 
         XCTAssertTrue(StubURLProtocol.requests.contains {
             $0.line == "DELETE /index.php/apps/deck/api/v1.0/boards/1/stacks/10/cards/3"
         })
-        XCTAssertNil(app.cardPendingDelete)
-        XCTAssertEqual(app.selectedCardId, 2, "the last card in the list: the one before it")
+        XCTAssertNil(app.window.cardPendingDelete)
+        XCTAssertEqual(app.window.selectedCardId, 2, "the last card in the list: the one before it")
     }
 
     func testANewCardGoesInTheSelectedCardsListAndIsSelected() async {
         let app = await makeKeyboardApp { request in
             request.method == "POST" ? .json(#"{"id": 9, "title": "New", "stackId": 20, "order": 1}"#) : nil
         }
-        app.startNewCard()
-        XCTAssertEqual(app.newCardListId, 10, "nothing selected: the first list")
-        app.selectedCardId = 4
-        app.startNewCard()
-        XCTAssertEqual(app.newCardListId, 20)
+        app.window.startNewCard()
+        XCTAssertEqual(app.window.newCardListId, 10, "nothing selected: the first list")
+        app.window.selectedCardId = 4
+        app.window.startNewCard()
+        XCTAssertEqual(app.window.newCardListId, 20)
 
-        await app.createCard(boardId: 1, stackId: 20, title: "New")
+        await app.window.createCard(boardId: 1, stackId: 20, title: "New")
 
-        XCTAssertEqual(app.selectedCardId, 9)
+        XCTAssertEqual(app.window.selectedCardId, 9)
     }
 }
 
@@ -1275,10 +1282,10 @@ extension AppStateTests {
         let app = await makeSearchApp()
         let before = StubURLProtocol.requests.count
 
-        app.cardSearchText = "paint"
+        app.window.cardSearchText = "paint"
         await app.loadCardsForSearch()
 
-        let groups = app.cardSearchResults
+        let groups = app.window.cardSearchResults
         XCTAssertEqual(groups.map(\.board.title), ["One", "Two"])
         XCTAssertEqual(groups.flatMap(\.results).map(\.card.title), ["Paint door", "Paint office", "Paint shed"])
         XCTAssertEqual(requestCount("/stacks/archived", skipping: before), 2)
@@ -1286,20 +1293,20 @@ extension AppStateTests {
 
     func testOpeningASearchResultOpensItsBoardAndCard() async throws {
         let app = await makeSearchApp()
-        app.cardSearchText = "paint"
+        app.window.cardSearchText = "paint"
         await app.loadCardsForSearch()
-        let results = app.cardSearchResults.flatMap(\.results)
+        let results = app.window.cardSearchResults.flatMap(\.results)
 
-        try app.open(XCTUnwrap(results.first { $0.card.title == "Paint office" }))
-        XCTAssertEqual(app.selectedBoardId, 2)
-        XCTAssertEqual(app.selectedCardId, 22)
-        XCTAssertEqual(app.openedCard?.id, 22)
-        XCTAssertFalse(app.showingArchivedCards)
+        try app.window.open(XCTUnwrap(results.first { $0.card.title == "Paint office" }))
+        XCTAssertEqual(app.window.selectedBoardId, 2)
+        XCTAssertEqual(app.window.selectedCardId, 22)
+        XCTAssertEqual(app.window.openedCard?.id, 22)
+        XCTAssertFalse(app.window.showingArchivedCards)
 
-        app.openedCard = nil
-        try app.open(XCTUnwrap(results.first { $0.card.title == "Paint shed" }))
-        XCTAssertNil(app.openedCard)
-        XCTAssertTrue(app.showingArchivedCards, "an archived card shows in the board's archived cards")
+        app.window.openedCard = nil
+        try app.window.open(XCTUnwrap(results.first { $0.card.title == "Paint shed" }))
+        XCTAssertNil(app.window.openedCard)
+        XCTAssertTrue(app.window.showingArchivedCards, "an archived card shows in the board's archived cards")
     }
 }
 
@@ -1309,22 +1316,22 @@ extension AppStateTests {
     func testClickingANotificationOpensItsBoardAndCard() async throws {
         let app = await makeKeyboardApp()
         let account = try XCTUnwrap(app.activeAccount)
-        app.selectedBoardId = 2
+        app.window.selectedBoardId = 2
 
-        await app.openCard(id: 4, boardId: 1, accountId: account.id)
+        await app.window.openCard(id: 4, boardId: 1, accountId: account.id)
 
-        XCTAssertEqual(app.selectedBoardId, 1)
-        XCTAssertEqual(app.selectedCardId, 4)
-        XCTAssertEqual(app.openedCard?.title, "Four")
+        XCTAssertEqual(app.window.selectedBoardId, 1)
+        XCTAssertEqual(app.window.selectedCardId, 4)
+        XCTAssertEqual(app.window.openedCard?.title, "Four")
     }
 
     func testANotificationForACardThatHasGoneOpensNothing() async throws {
         let app = await makeKeyboardApp()
         let account = try XCTUnwrap(app.activeAccount)
 
-        await app.openCard(id: 99, boardId: 1, accountId: account.id)
-        XCTAssertNil(app.openedCard)
-        await app.openCard(id: 4, boardId: 1, accountId: "someone@else.example")
-        XCTAssertNil(app.openedCard, "an account that isn't signed in")
+        await app.window.openCard(id: 99, boardId: 1, accountId: account.id)
+        XCTAssertNil(app.window.openedCard)
+        await app.window.openCard(id: 4, boardId: 1, accountId: "someone@else.example")
+        XCTAssertNil(app.window.openedCard, "an account that isn't signed in")
     }
 }
