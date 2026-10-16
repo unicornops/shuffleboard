@@ -415,8 +415,10 @@ final class MainFlowUITests: XCTestCase {
 
     // MARK: - Windows (#160)
 
-    /// A board opens in a new window from its context menu, or with ⌘-click; each window keeps its own board, and
-    /// windows on the same board show the same lists, so a card added in one shows in the other.
+    /// A board opens in a new window from its context menu, or with ⌘-click; each window keeps its own board, the
+    /// menu commands act on the window in front, and windows on the same board show the same lists, so a card added
+    /// in one shows in the other. Everything is done in the window in front, the one just opened: new windows open
+    /// over the others, so clicks meant for a window behind would land on it.
     func testOpeningBoardsInNewWindows() async throws {
         let first = try await makeBoard()
         let second = try await makeBoard()
@@ -431,31 +433,34 @@ final class MainFlowUITests: XCTestCase {
         let secondWindow = app.windows.containing(.any, identifier: "list: Doing").firstMatch
         secondWindow.waitToAppear("The board did not open in a new window")
         XCTAssertEqual(app.windows.count, 2)
-        let firstWindow = app.windows.containing(.any, identifier: "list: To do").firstMatch
-        XCTAssertTrue(firstWindow.exists, "The first window no longer shows its board")
+        XCTAssertTrue(
+            app.windows.containing(.any, identifier: "list: To do").firstMatch.exists,
+            "The first window no longer shows its board"
+        )
 
-        secondWindow.list("Doing").buttons["Add card"].click()
-        secondWindow.find(.textField, "Card title").waitToAppear()
-        app.typeText("Added in a second window\r")
-        try await eventually("Card not created on the server") {
-            try await alice.list(holding: "Added in a second window", board: second.id) == "Doing"
-        }
-
-        // The first window opens the same board: the card is there too, from the same lists.
-        firstWindow.element("board: \(second.title)").click()
-        try await eventually("Both windows on the second board don't show the card") {
-            app.windows.containing(.any, identifier: "card: Added in a second window").count == 2
-        }
-
-        // ⌘-click opens a board in another window.
+        // ⌘-click in the new window's sidebar: the first board, in a third window.
         XCUIElement.perform(withKeyModifiers: .command) {
-            app.windows.firstMatch.element("board: \(first.title)").click()
+            secondWindow.element("board: \(first.title)").click()
         }
         try await eventually("⌘-click did not open the board in a new window") {
-            app.windows.count == 3
+            app.windows.count == 3 && app.windows.containing(.any, identifier: "list: To do").count == 2
         }
-        app.windows.containing(.any, identifier: "list: To do").firstMatch
-            .waitToAppear("The ⌘-clicked board isn't shown in the new window")
+
+        // File > New Card acts on the window in front, the third; the first window, on the same board, shows the card
+        // too, and the second, on the other board, doesn't.
+        app.typeKey("n", modifierFlags: .command)
+        app.find(.textField, "Card title").waitToAppear("New Card did not open the card field")
+        app.typeText("Added in a third window\r")
+        try await eventually("Card not created in To do on the server") {
+            try await alice.list(holding: "Added in a third window", board: first.id) == "To do"
+        }
+        try await eventually("Both windows on the first board don't show the card") {
+            app.windows.containing(.any, identifier: "card: Added in a third window").count == 2
+        }
+        XCTAssertFalse(
+            secondWindow.element("card: Added in a third window").exists,
+            "The window on the other board shows the card"
+        )
     }
 
     /// @mentions (#163): typing "@" in a comment suggests the board's members; picking one writes the mention, which
