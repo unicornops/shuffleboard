@@ -54,8 +54,8 @@ final class BackgroundWork {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
                 MainActor.assumeIsolated {
-                    guard let self, AppSettings.refreshInterval() != refreshInterval else { return }
-                    restartRefreshing()
+                    guard let self, AppSettings.refreshInterval() != self.refreshInterval else { return }
+                    self.restartRefreshing()
                 }
             }
             .store(in: &subscriptions)
