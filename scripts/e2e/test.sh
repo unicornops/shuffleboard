@@ -36,13 +36,16 @@ esac
 
 result="build/$KIND.xcresult"
 rm -rf "$result"
-# Ad-hoc signed, as in PR validation: the tests run the app, and UI tests a runner app too.
+# Ad-hoc signed, as in PR validation: the tests run the app, and UI tests a runner app too. A test that hangs fails
+# after five minutes (the longest take under a minute), with a report, rather than using up the job's time.
 xcodebuild \
     -project Shuffleboard.xcodeproj \
     -scheme "$scheme" \
     -destination 'platform=macOS' \
     -derivedDataPath build/E2EDerivedData \
     -resultBundlePath "$result" \
+    -test-timeouts-enabled YES \
+    -default-test-execution-time-allowance 300 \
     CODE_SIGN_IDENTITY=- \
     CODE_SIGN_STYLE=Manual \
     DEVELOPMENT_TEAM= \

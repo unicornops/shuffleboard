@@ -278,3 +278,12 @@ extension BoardWindow {
 struct WeakBoardWindow {
     weak var window: BoardWindow?
 }
+
+// MARK: - BoardWindowValue
+
+/// What SwiftUI opens a window with, and restores it with at launch: which window it is, and the board it shows.
+/// Every window has its own `id`, so opening a board in a new window always opens one, even on a board already open.
+struct BoardWindowValue: Codable, Hashable {
+    var id = UUID()
+    var boardId: Int?
+}

@@ -3,6 +3,7 @@ import SwiftUI
 struct BoardListView: View {
     @EnvironmentObject private var appState: AppState
     @EnvironmentObject private var window: BoardWindow
+    @Environment(\.openWindow) private var openWindow
     @State private var pendingBoardDelete: Int?
     @State private var editingBoard: Board?
     @State private var duplicatingBoard: Board?
@@ -103,10 +104,9 @@ struct BoardListView: View {
         List(selection: Binding(
             get: { window.selectedBoardId },
             set: { new in
-                window.selectedBoardId = new
-                if let bid = new, let board = appState.boards.first(where: { $0.id == bid }) {
-                    window.selectBoard(board)
-                }
+                // A ⌘-click (or a click on nothing) can deselect the row; the window keeps its board.
+                guard let bid = new, let board = appState.boards.first(where: { $0.id == bid }) else { return }
+                window.selectBoard(board)
             }
         )) {
             if isSearching {
@@ -147,7 +147,7 @@ struct BoardListView: View {
             } else {
                 ForEach(appState.activeBoards) { board in
                     Button {
-                        window.selectBoard(board)
+                        open(board)
                     } label: {
                         BoardRowView(board: board)
                     }
@@ -155,6 +155,10 @@ struct BoardListView: View {
                     .accessibilityIdentifier("board: \(board.title)")
                     .tag(board.id)
                     .contextMenu {
+                        Button("Open in New Window") {
+                            openInNewWindow(board)
+                        }
+                        Divider()
                         Group {
                             boardActions(board)
                             Button("Archive") {
@@ -174,7 +178,7 @@ struct BoardListView: View {
             Section("Archived") {
                 ForEach(appState.archivedBoards) { board in
                     Button {
-                        window.selectBoard(board)
+                        open(board)
                     } label: {
                         BoardRowView(board: board)
                     }
@@ -183,6 +187,10 @@ struct BoardListView: View {
                     .accessibilityIdentifier("board: \(board.title)")
                     .tag(board.id)
                     .contextMenu {
+                        Button("Open in New Window") {
+                            openInNewWindow(board)
+                        }
+                        Divider()
                         Group {
                             boardActions(board)
                             Button("Unarchive") {
@@ -201,6 +209,19 @@ struct BoardListView: View {
         if !appState.deletedBoards.isEmpty {
             recentlyDeleted
         }
+    }
+
+    /// Opens `board` in this window, or in a new one with ⌘ held, as Safari opens links (#160).
+    private func open(_ board: Board) {
+        if NSEvent.modifierFlags.contains(.command) {
+            openInNewWindow(board)
+        } else {
+            window.selectBoard(board)
+        }
+    }
+
+    private func openInNewWindow(_ board: Board) {
+        openWindow(value: BoardWindowValue(boardId: board.id))
     }
 
     /// "Edit Board…", for boards the signed-in user may manage, and "Duplicate…".
