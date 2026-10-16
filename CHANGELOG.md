@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.25.0](https://github.com/unicornops/shuffleboard/compare/v0.24.0...v0.25.0) (2026-10-16)
+
+
+### Features
+
+* **windows:** keep each window's board and selection apart from the app's state ([#194](https://github.com/unicornops/shuffleboard/issues/194)) ([bb7cb3d](https://github.com/unicornops/shuffleboard/commit/bb7cb3dc48373c45169c4c233300cc51d29a949b)), closes [#160](https://github.com/unicornops/shuffleboard/issues/160)
+* **windows:** open boards in their own windows ([#195](https://github.com/unicornops/shuffleboard/issues/195)) ([b35b342](https://github.com/unicornops/shuffleboard/commit/b35b342820d7b222fd5cc50d9cca56862a85642d))
+
 ## [0.24.0](https://github.com/unicornops/shuffleboard/compare/v0.23.1...v0.24.0) (2026-10-15)
 
 
