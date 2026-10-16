@@ -295,11 +295,17 @@ extension XCUIApplication {
         if let appearance {
             launchEnvironment["SHUFFLEBOARD_UITEST_APPEARANCE"] = appearance
         }
+        // One window, as at a first launch: no windows restored from an earlier test (#160).
+        launchArguments += ["-ApplePersistenceIgnoreState", "YES"]
         launch()
         XCTAssertTrue(windows.firstMatch.waitForExistence(timeout: 20), "The app's window did not open")
         return accounts
     }
+}
 
+/// Finding the app's elements, in the whole app or in one of its windows (#160).
+@MainActor
+extension XCUIElement {
     /// Any element with this accessibility identifier or label.
     func element(_ name: String) -> XCUIElement {
         descendants(matching: .any).matching(identifier: name).firstMatch

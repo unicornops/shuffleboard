@@ -413,6 +413,51 @@ final class MainFlowUITests: XCTestCase {
         app.find(.button, "Cancel").click()
     }
 
+    // MARK: - Windows (#160)
+
+    /// A board opens in a new window from its context menu, or with ⌘-click; each window keeps its own board, and
+    /// windows on the same board show the same lists, so a card added in one shows in the other.
+    func testOpeningBoardsInNewWindows() async throws {
+        let first = try await makeBoard()
+        let second = try await makeBoard()
+        _ = try await alice.createStack(board: first.id, "To do", order: 0)
+        _ = try await alice.createStack(board: second.id, "Doing", order: 0)
+        try await app.launch(on: server, as: [UITestServer.alice])
+        app.openBoard(first.title)
+        app.list("To do").waitToAppear("The first board's list isn't shown")
+
+        app.element("board: \(second.title)").rightClick()
+        app.menuItems["Open in New Window"].waitToAppear("No Open in New Window in the board's context menu").click()
+        let secondWindow = app.windows.containing(.any, identifier: "list: Doing").firstMatch
+        secondWindow.waitToAppear("The board did not open in a new window")
+        XCTAssertEqual(app.windows.count, 2)
+        let firstWindow = app.windows.containing(.any, identifier: "list: To do").firstMatch
+        XCTAssertTrue(firstWindow.exists, "The first window no longer shows its board")
+
+        secondWindow.list("Doing").buttons["Add card"].click()
+        secondWindow.find(.textField, "Card title").waitToAppear()
+        app.typeText("Added in a second window\r")
+        try await eventually("Card not created on the server") {
+            try await alice.list(holding: "Added in a second window", board: second.id) == "Doing"
+        }
+
+        // The first window opens the same board: the card is there too, from the same lists.
+        firstWindow.element("board: \(second.title)").click()
+        try await eventually("Both windows on the second board don't show the card") {
+            app.windows.containing(.any, identifier: "card: Added in a second window").count == 2
+        }
+
+        // ⌘-click opens a board in another window.
+        XCUIElement.perform(withKeyModifiers: .command) {
+            app.windows.firstMatch.element("board: \(first.title)").click()
+        }
+        try await eventually("⌘-click did not open the board in a new window") {
+            app.windows.count == 3
+        }
+        app.windows.containing(.any, identifier: "list: To do").firstMatch
+            .waitToAppear("The ⌘-clicked board isn't shown in the new window")
+    }
+
     /// @mentions (#163): typing "@" in a comment suggests the board's members; picking one writes the mention, which
     /// is shown by name once posted.
     func testMentioningSomeoneInAComment() async throws {

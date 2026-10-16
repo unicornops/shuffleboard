@@ -136,6 +136,20 @@ final class WindowTests: XCTestCase {
         XCTAssertEqual(Set(app.lists.keys), [2, 3])
     }
 
+    func testClosingAWindowLetsGoOfItsBoardsLists() async {
+        let app = await makeApp()
+        let first = await openWindow(on: 1, in: app)
+        let second = await openWindow(on: 2, in: app)
+
+        app.windowClosed(second)
+
+        XCTAssertEqual(app.windows.map(ObjectIdentifier.init), [ObjectIdentifier(first)])
+        XCTAssertEqual(Set(app.lists.keys), [1])
+        let before = listRequests.count
+        await app.refreshIfChanged()
+        XCTAssertEqual(listRequests.dropFirst(before), ["/index.php/apps/deck/api/v1.0/boards/1/stacks"])
+    }
+
     func testDeletingABoardMovesOnlyTheWindowsShowingIt() async {
         let app = await makeApp()
         let first = await openWindow(on: 3, in: app)

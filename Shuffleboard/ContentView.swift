@@ -2,18 +2,28 @@ import SwiftUI
 
 // MARK: - BoardWindowRoot
 
-/// A window of the app: makes the window's `BoardWindow` when it opens, and points the menu commands at it while
-/// it's in front.
+/// A window of the app (#160): makes the window's `BoardWindow` when it opens, on the board it was opened or restored
+/// with; points the menu commands at it while it's in front; and keeps `value` on its board, so SwiftUI restores it
+/// there at launch.
 struct BoardWindowRoot: View {
     let appState: AppState
     let commandState: BoardCommandState
+    let backgroundWork: BackgroundWork
+    @Binding var value: BoardWindowValue
     @StateObject private var window: BoardWindow
     @Environment(\.controlActiveState) private var controlActiveState
 
-    init(appState: AppState, commandState: BoardCommandState) {
+    init(
+        appState: AppState,
+        commandState: BoardCommandState,
+        backgroundWork: BackgroundWork,
+        value: Binding<BoardWindowValue>
+    ) {
         self.appState = appState
         self.commandState = commandState
-        _window = StateObject(wrappedValue: BoardWindow(app: appState))
+        self.backgroundWork = backgroundWork
+        _value = value
+        _window = StateObject(wrappedValue: BoardWindow(app: appState, boardId: value.wrappedValue.boardId))
     }
 
     var body: some View {
@@ -22,11 +32,19 @@ struct BoardWindowRoot: View {
             .environmentObject(window)
             .onAppear {
                 commandState.activate(window)
+                value.boardId = window.selectedBoardId
+                backgroundWork.windowOpened(window)
+            }
+            .onDisappear {
+                appState.windowClosed(window)
             }
             .onChange(of: controlActiveState) { _, state in
                 if state == .key {
                     commandState.activate(window)
                 }
+            }
+            .onChange(of: window.selectedBoardId) { _, boardId in
+                value.boardId = boardId
             }
     }
 }
@@ -35,7 +53,7 @@ struct BoardWindowRoot: View {
 
 struct ContentView: View {
     @EnvironmentObject private var appState: AppState
-    @EnvironmentObject private var window: BoardWindow
+    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         Group {
@@ -46,13 +64,7 @@ struct ContentView: View {
             }
         }
         .animation(.easeInOut(duration: 0.2), value: appState.showingLogin)
-        .sheet(isPresented: $appState.showingAbout) {
-            AboutSheet()
-        }
     }
-
-    /// How often to look for changes, from Settings; changing it restarts the refresh loop.
-    @AppStorage(AppSettings.refreshIntervalKey) private var refreshInterval = AppSettings.defaultRefreshInterval
 
     private var mainInterface: some View {
         NavigationSplitView {
@@ -61,45 +73,13 @@ struct ContentView: View {
             BoardDetailView()
         }
         .actionErrorBanner(appState)
-        .task {
-            await appState.loadBoardsIfNeeded()
-            await appState.updateReminders()
-        }
-        // Pick up changes made elsewhere: when the app comes back to the front, and every so often while open
-        // (each check is a 304 with no body when nothing has changed). Both are set in Settings.
-        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
-            Task { await appState.appDidBecomeActive() }
-        }
-        .task(id: refreshInterval) {
-            await appState.refreshPeriodically()
-        }
-        // While the server can't be reached, keep trying (whatever the refresh setting), so editing comes back on
-        // by itself (#156).
-        .task(id: appState.connectionProblem) {
-            while appState.connectionProblem != nil {
-                do {
-                    try await Task.sleep(for: .seconds(15))
-                } catch {
-                    return
-                }
-                await appState.reconnect()
-            }
-        }
-        .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
-            appState.flushCache()
-        }
-        .onReceive(CardReminderClicks.shared.$clicked) { clicked in
-            guard let clicked else { return }
-            CardReminderClicks.shared.clicked = nil
-            Task { await window.openCard(id: clicked.cardId, boardId: clicked.boardId, accountId: clicked.accountId) }
-        }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Menu {
                     accountSection
                     Divider()
                     Button("About Shuffleboard", systemImage: "info.circle") {
-                        appState.showingAbout = true
+                        openWindow(id: AboutSheet.windowId)
                     }
                     Button("Refresh", systemImage: "arrow.clockwise") {
                         Task { await appState.refresh() }
@@ -195,8 +175,21 @@ private enum BuildMetadata {
     }
 }
 
-private struct AboutSheet: View {
-    @Environment(\.dismiss) private var dismiss
+/// The About window's menu item.
+struct AboutButton: View {
+    @Environment(\.openWindow) private var openWindow
+
+    var body: some View {
+        Button("About Shuffleboard") {
+            openWindow(id: AboutSheet.windowId)
+        }
+    }
+}
+
+/// The About window: the version, build details and the unofficial notice.
+struct AboutSheet: View {
+    static let windowId = "about"
+    @Environment(\.dismissWindow) private var dismissWindow
 
     var body: some View {
         VStack(spacing: 18) {
@@ -245,7 +238,7 @@ private struct AboutSheet: View {
                 }
                 Spacer()
                 Button("Close") {
-                    dismiss()
+                    dismissWindow(id: Self.windowId)
                 }
                 .keyboardShortcut(.defaultAction)
             }

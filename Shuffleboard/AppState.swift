@@ -26,7 +26,6 @@ final class AppState: ObservableObject {
     /// Errors from actions that have no UI of their own (moving, deleting, labelling…), shown as a banner.
     @Published var actionError: String?
     @Published var showingLogin = false
-    @Published var showingAbout = false
     /// The server's Deck version (e.g. "1.18.5"), read once per account; nil until known.
     @Published private(set) var serverDeckVersion: String?
     /// The server has no Activity app, so the card sheet leaves out the card's history (#164).
@@ -1525,6 +1524,15 @@ extension AppState {
     /// Keeps track of `window` (without keeping it open), so changes to the boards reach it.
     func register(_ window: BoardWindow) {
         windowRefs = windowRefs.filter { $0.window != nil } + [WeakBoardWindow(window: window)]
+    }
+
+    /// `window` was closed: lets go of it, and of its board's lists unless another window shows them.
+    func windowClosed(_ window: BoardWindow) {
+        windowRefs = windowRefs.filter { $0.window != nil && $0.window !== window }
+        let open = openBoardIds
+        if lists.keys.contains(where: { !open.contains($0) }) {
+            lists = lists.filter { open.contains($0.key) }
+        }
     }
 
     /// Whether a window can show `boardId`: it's in the board list and not deleted.

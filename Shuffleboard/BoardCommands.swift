@@ -139,6 +139,7 @@ struct BoardCommands: Commands {
             }
             .keyboardShortcut("n", modifiers: [.command, .option])
             .disabled(!isSignedIn || isReadOnly)
+            NewWindowButton(state: state)
             Divider()
             Button("Refresh") {
                 Task { await appState.refresh() }
@@ -223,5 +224,19 @@ struct BoardCommands: Commands {
         } else {
             window?.requestDeletingSelectedCard()
         }
+    }
+}
+
+/// File > New Window (#160): another window, on the board of the window in front. ⌘N is New Card, so it's ⌃⌘N.
+private struct NewWindowButton: View {
+    /// Not observed: only read when the button is clicked.
+    let state: BoardCommandState
+    @Environment(\.openWindow) private var openWindow
+
+    var body: some View {
+        Button("New Window") {
+            openWindow(value: BoardWindowValue(boardId: state.window?.selectedBoardId))
+        }
+        .keyboardShortcut("n", modifiers: [.command, .control])
     }
 }
