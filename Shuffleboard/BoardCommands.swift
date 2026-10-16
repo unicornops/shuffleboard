@@ -2,9 +2,9 @@ import AppKit
 import Combine
 import SwiftUI
 
-/// What the menu bar commands show and enable, worked out from `AppState`. Kept apart from it so the menu bar only
-/// rebuilds when one of these changes: rebuilt on every change to `AppState` (while dragging cards, say), it made
-/// the window's toolbar flicker.
+/// What the menu bar commands show and enable, worked out from `AppState` and the window in front. Kept apart from
+/// them so the menu bar only rebuilds when one of these changes: rebuilt on every change to `AppState` (while
+/// dragging cards, say), it made the window's toolbar flicker.
 struct CommandAvailability: Equatable {
     struct BoardShortcut: Equatable {
         let id: Int
@@ -27,42 +27,69 @@ struct CommandAvailability: Equatable {
     var boardShortcuts: [BoardShortcut] = []
 
     @MainActor
-    init(_ appState: AppState? = nil) {
+    init(_ appState: AppState? = nil, window: BoardWindow? = nil) {
         guard let appState else { return }
         self.isSignedIn = appState.isLoggedIn && !appState.showingLogin
-        self.boardIsOpen = isSignedIn && appState.selectedBoard != nil && appState.openedCard == nil
-        self.boardHasLists = !appState.stacks.isEmpty
-        let selectedCard = boardIsOpen ? appState.selectedCard : nil
-        self.cardIsSelected = selectedCard != nil
-        self.selectedCardIsDone = selectedCard?.isDone == true
-        self.canMoveCard = boardIsOpen && appState.canMoveSelectedCard
-        self.canChangeCard = boardIsOpen && appState.canChangeSelectedCard
+        if let window {
+            self.boardIsOpen = isSignedIn && window.selectedBoard != nil && window.openedCard == nil
+            self.boardHasLists = !window.stacks.isEmpty
+            let selectedCard = boardIsOpen ? window.selectedCard : nil
+            self.cardIsSelected = selectedCard != nil
+            self.selectedCardIsDone = selectedCard?.isDone == true
+            self.canMoveCard = boardIsOpen && window.canMoveSelectedCard
+            self.canChangeCard = boardIsOpen && window.canChangeSelectedCard
+        }
         self.isReadOnly = appState.isReadOnly
         self.hasBoards = !appState.boardsInSidebarOrder.isEmpty
         self.boardShortcuts = appState.activeBoards.prefix(9).map { BoardShortcut(id: $0.id, title: $0.title) }
     }
 }
 
-/// Publishes `AppState`'s `CommandAvailability`, only when it changes.
+/// Publishes the `CommandAvailability` of `AppState` and the window in front, only when it changes, and says which
+/// window the commands act on.
 @MainActor
 final class BoardCommandState: ObservableObject {
     @Published private(set) var availability = CommandAvailability()
+    /// The window in front, which the commands act on (#160).
+    private(set) weak var window: BoardWindow?
+    private let appState: AppState
     private var subscription: AnyCancellable?
 
     init(appState: AppState) {
+        self.appState = appState
         self.availability = CommandAvailability(appState)
+        subscribe()
+    }
+
+    /// Points the commands at `window`, which has come to the front.
+    func activate(_ window: BoardWindow) {
+        guard window !== self.window else { return }
+        self.window = window
+        subscribe()
+        update()
+    }
+
+    /// Follows changes to `AppState` and to the window in front.
+    private func subscribe() {
+        var changes = [appState.objectWillChange.eraseToAnyPublisher()]
+        if let window {
+            changes.append(window.objectWillChange.eraseToAnyPublisher())
+        }
         // objectWillChange fires before the change, so look once it has been made.
-        self.subscription = appState.objectWillChange
+        subscription = Publishers.MergeMany(changes)
             .receive(on: DispatchQueue.main)
-            .sink { [weak self, weak appState] _ in
+            .sink { [weak self] _ in
                 MainActor.assumeIsolated {
-                    guard let self, let appState else { return }
-                    let availability = CommandAvailability(appState)
-                    if availability != self.availability {
-                        self.availability = availability
-                    }
+                    self?.update()
                 }
             }
+    }
+
+    private func update() {
+        let availability = CommandAvailability(appState, window: window)
+        if availability != self.availability {
+            self.availability = availability
+        }
     }
 }
 
@@ -73,6 +100,11 @@ struct BoardCommands: Commands {
     /// Not observed: the commands only change with `state`.
     let appState: AppState
     @ObservedObject var state: BoardCommandState
+
+    /// The window in front, which the commands act on.
+    private var window: BoardWindow? {
+        state.window
+    }
 
     private var isSignedIn: Bool {
         state.availability.isSignedIn
@@ -93,17 +125,17 @@ struct BoardCommands: Commands {
     var body: some Commands {
         CommandGroup(replacing: .newItem) {
             Button("New Card") {
-                appState.startNewCard()
+                window?.startNewCard()
             }
             .keyboardShortcut("n")
             .disabled(!boardIsOpen || !state.availability.boardHasLists || isReadOnly)
             Button("New List\u{2026}") {
-                appState.showingNewStack = true
+                window?.showingNewStack = true
             }
             .keyboardShortcut("n", modifiers: [.command, .shift])
             .disabled(!boardIsOpen || isReadOnly)
             Button("New Board\u{2026}") {
-                appState.showingNewBoard = true
+                window?.showingNewBoard = true
             }
             .keyboardShortcut("n", modifiers: [.command, .option])
             .disabled(!isSignedIn || isReadOnly)
@@ -117,29 +149,29 @@ struct BoardCommands: Commands {
         CommandGroup(after: .textEditing) {
             Divider()
             Button("Filter Cards") {
-                appState.filterFocusRequest += 1
+                window?.filterFocusRequest += 1
             }
             .keyboardShortcut("f")
             .disabled(!boardIsOpen)
             Button("Search All Boards") {
-                appState.cardSearchFocusRequest += 1
+                window?.cardSearchFocusRequest += 1
             }
             .keyboardShortcut("f", modifiers: [.command, .shift])
             .disabled(!isSignedIn)
         }
         CommandMenu("Card") {
             Button("Open Card") {
-                appState.openSelectedCard()
+                window?.openSelectedCard()
             }
             .keyboardShortcut("o")
             .disabled(!cardIsSelected)
             Button(state.availability.selectedCardIsDone ? "Mark as Not Done" : "Mark as Done") {
-                Task { await appState.toggleSelectedCardDone() }
+                Task { await window?.toggleSelectedCardDone() }
             }
             .keyboardShortcut("c", modifiers: [.command, .shift])
             .disabled(!state.availability.canChangeCard)
             Button("Archive Card") {
-                Task { await appState.archiveSelectedCard() }
+                Task { await window?.archiveSelectedCard() }
             }
             .keyboardShortcut("a", modifiers: [.command, .control])
             .disabled(!state.availability.canChangeCard)
@@ -156,18 +188,18 @@ struct BoardCommands: Commands {
         }
         CommandGroup(before: .sidebar) {
             Button("Previous Board") {
-                appState.selectBoard(offset: -1)
+                window?.selectBoard(offset: -1)
             }
             .keyboardShortcut("[")
             .disabled(!isSignedIn || !state.availability.hasBoards)
             Button("Next Board") {
-                appState.selectBoard(offset: 1)
+                window?.selectBoard(offset: 1)
             }
             .keyboardShortcut("]")
             .disabled(!isSignedIn || !state.availability.hasBoards)
             ForEach(Array(state.availability.boardShortcuts.enumerated()), id: \.element.id) { index, board in
                 Button(board.title) {
-                    appState.selectedBoardId = board.id
+                    window?.selectedBoardId = board.id
                 }
                 .keyboardShortcut(KeyEquivalent(Character(String(index + 1))))
                 .disabled(!isSignedIn)
@@ -178,7 +210,7 @@ struct BoardCommands: Commands {
 
     private func moveButton(_ title: String, _ direction: CardDirection, key: KeyEquivalent) -> some View {
         Button(title) {
-            Task { await appState.moveSelectedCard(direction) }
+            Task { await window?.moveSelectedCard(direction) }
         }
         .keyboardShortcut(key, modifiers: [.command, .option])
         .disabled(!state.availability.canMoveCard)
@@ -189,7 +221,7 @@ struct BoardCommands: Commands {
         if NSApp.keyWindow?.firstResponder is NSText {
             NSApp.sendAction(#selector(NSResponder.deleteToBeginningOfLine(_:)), to: nil, from: nil)
         } else {
-            appState.requestDeletingSelectedCard()
+            window?.requestDeletingSelectedCard()
         }
     }
 }

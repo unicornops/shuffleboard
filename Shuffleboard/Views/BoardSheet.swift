@@ -82,6 +82,7 @@ struct DuplicateBoardSheet: View {
     let board: Board
     var onDismiss: () -> Void
     @EnvironmentObject private var appState: AppState
+    @EnvironmentObject private var window: BoardWindow
     @Environment(\.dismiss) private var dismiss
     @State private var title: String
     @State private var withCards = true
@@ -150,7 +151,7 @@ struct DuplicateBoardSheet: View {
         appState.errorMessage = nil
         let options = BoardCopyOptions(title: title, withCards: withCards)
         Task {
-            let success = await appState.duplicateBoard(id: board.id, options: options)
+            let success = await window.duplicateBoard(id: board.id, options: options)
             await MainActor.run {
                 isSaving = false
                 if success {

@@ -24,6 +24,7 @@ private struct DraggedStack {
 
 struct BoardDetailView: View {
     @EnvironmentObject private var appState: AppState
+    @EnvironmentObject private var window: BoardWindow
     @State private var showingSharing = false
     @State private var showingEditBoard = false
     @State private var showingLabels = false
@@ -34,10 +35,10 @@ struct BoardDetailView: View {
 
     var body: some View {
         Group {
-            if let board = appState.selectedBoard {
+            if let board = window.selectedBoard {
                 VStack(spacing: 0) {
                     boardHeader(board)
-                    if appState.cardFilter.isActive {
+                    if window.cardFilter.isActive {
                         filterStatus
                     }
                     Divider()
@@ -54,87 +55,90 @@ struct BoardDetailView: View {
         }
         .safeAreaInset(edge: .top, spacing: 0) {
             if let problem = appState.connectionProblem {
-                OfflineBanner(problem: problem, dataDate: appState.offlineDataDate) {
+                OfflineBanner(problem: problem, dataDate: window.offlineDataDate) {
                     await appState.reconnect()
                 }
             }
         }
-        .navigationTitle(appState.selectedBoard?.title ?? "Deck")
-        .searchable(text: $appState.cardFilter.text, placement: .toolbar, prompt: "Filter cards")
+        .navigationTitle(window.selectedBoard?.title ?? "Deck")
+        .searchable(text: $window.cardFilter.text, placement: .toolbar, prompt: "Filter cards")
         .searchFocusedIfAvailable($isFilterFocused)
-        .onChange(of: appState.filterFocusRequest) {
+        .onChange(of: window.filterFocusRequest) {
             isFilterFocused = true
         }
         .sheet(isPresented: $showingSharing) {
-            if let board = appState.selectedBoard {
+            if let board = window.selectedBoard {
                 BoardSharingSheet(boardId: board.id)
                     .environmentObject(appState)
+                    .environmentObject(window)
             }
         }
         .sheet(isPresented: $showingEditBoard) {
-            if let board = appState.selectedBoard {
+            if let board = window.selectedBoard {
                 BoardSheet(board: board) {
                     showingEditBoard = false
                 }
                 .environmentObject(appState)
+                .environmentObject(window)
             }
         }
         .sheet(isPresented: $showingLabels) {
-            if let board = appState.selectedBoard {
+            if let board = window.selectedBoard {
                 BoardLabelsSheet(boardId: board.id)
                     .environmentObject(appState)
+                    .environmentObject(window)
             }
         }
-        .sheet(isPresented: $appState.showingArchivedCards) {
-            if let board = appState.selectedBoard {
+        .sheet(isPresented: $window.showingArchivedCards) {
+            if let board = window.selectedBoard {
                 ArchivedCardsSheet(board: board)
                     .environmentObject(appState)
+                    .environmentObject(window)
             }
         }
-        .sheet(item: $appState.openedCard) { card in
-            if let board = appState.selectedBoard {
+        .sheet(item: $window.openedCard) { card in
+            if let board = window.selectedBoard {
                 // Card actions reload the lists themselves; closing the sheet doesn't need to.
                 CardDetailSheet(card: card, boardId: board.id, onDismiss: {
-                    appState.openedCard = nil
+                    window.openedCard = nil
                 })
                 .environmentObject(appState)
+                .environmentObject(window)
             }
         }
-        .sheet(isPresented: $appState.showingNewStack) {
-            if let board = appState.selectedBoard {
+        .sheet(isPresented: $window.showingNewStack) {
+            if let board = window.selectedBoard {
                 NewStackSheet(boardId: board.id, onDismiss: {
-                    appState.showingNewStack = false
+                    window.showingNewStack = false
                 })
                 .environmentObject(appState)
+                .environmentObject(window)
             }
         }
         .confirmationDialog("Delete card?", isPresented: Binding(
-            get: { appState.cardPendingDelete != nil },
+            get: { window.cardPendingDelete != nil },
             set: {
                 if !$0 {
-                    appState.cardPendingDelete = nil
+                    window.cardPendingDelete = nil
                 }
             }
         )) {
             Button("Delete", role: .destructive) {
-                Task { await appState.deletePendingCard() }
+                Task { await window.deletePendingCard() }
             }
             Button("Cancel", role: .cancel) {
-                appState.cardPendingDelete = nil
+                window.cardPendingDelete = nil
             }
         } message: {
-            if let card = appState.cardPendingDelete {
+            if let card = window.cardPendingDelete {
                 Text(DeleteConfirmation.message("\u{201c}\(card.title)\u{201d}"))
             }
         }
         // The single place lists are loaded on board selection; changing board cancels the previous load.
-        .task(id: appState.selectedBoardId) {
+        .task(id: window.selectedBoardId) {
             // Labels and people differ per board, so a new board starts unfiltered.
-            appState.cardFilter = CardFilter()
-            guard let bid = appState.selectedBoardId else {
-                appState.clearStacks()
-                return
-            }
+            window.cardFilter = CardFilter()
+            guard let bid = window.selectedBoardId else { return }
             await appState.loadStacks(boardId: bid)
         }
     }
@@ -160,9 +164,9 @@ struct BoardDetailView: View {
             // Left of the buttons, and always taking its space, so they don't shift when a refresh starts or ends.
             ProgressView()
                 .controlSize(.small)
-                .opacity(appState.isLoadingStacks && !appState.stacks.isEmpty ? 1 : 0)
+                .opacity(window.isLoadingStacks && !window.stacks.isEmpty ? 1 : 0)
                 .help("Refreshing lists")
-                .accessibilityHidden(!appState.isLoadingStacks)
+                .accessibilityHidden(!window.isLoadingStacks)
             filterMenu(board)
             Button {
                 showingSharing = true
@@ -183,7 +187,7 @@ struct BoardDetailView: View {
                 .disabled(appState.isReadOnly)
             }
             Button {
-                appState.showingArchivedCards = true
+                window.showingArchivedCards = true
             } label: {
                 Image(systemName: "archivebox")
             }
@@ -197,9 +201,9 @@ struct BoardDetailView: View {
             }
             .help("Refresh lists")
             .accessibilityLabel("Refresh lists")
-            .disabled(appState.isLoadingStacks)
+            .disabled(window.isLoadingStacks)
             Button {
-                appState.showingNewStack = true
+                window.showingNewStack = true
             } label: {
                 SwiftUI.Label("Add list", systemImage: "plus.rectangle.on.rectangle")
             }
@@ -215,13 +219,13 @@ struct BoardDetailView: View {
 
     private func filterMenu(_ board: Board) -> some View {
         Menu {
-            Picker("Due", selection: $appState.cardFilter.due) {
+            Picker("Due", selection: $window.cardFilter.due) {
                 ForEach(CardFilter.Due.allCases) { due in
                     Text(due.title).tag(due)
                 }
             }
             .pickerStyle(.inline)
-            Toggle("Hide done cards", isOn: $appState.cardFilter.hideDone)
+            Toggle("Hide done cards", isOn: $window.cardFilter.hideDone)
             if !board.labels.isEmpty {
                 Section("Labels") {
                     ForEach(board.labels) { label in
@@ -238,12 +242,12 @@ struct BoardDetailView: View {
             }
             Divider()
             Button("Clear Filters") {
-                appState.cardFilter = CardFilter(text: appState.cardFilter.text)
+                window.cardFilter = CardFilter(text: window.cardFilter.text)
             }
         } label: {
             SwiftUI.Label(
                 "Filter",
-                systemImage: appState.cardFilter.isActive
+                systemImage: window.cardFilter.isActive
                     ? "line.3.horizontal.decrease.circle.fill"
                     : "line.3.horizontal.decrease.circle"
             )
@@ -259,20 +263,20 @@ struct BoardDetailView: View {
     )
         -> Binding<Bool> {
         Binding(
-            get: { appState.cardFilter[keyPath: keyPath].contains(value) },
+            get: { window.cardFilter[keyPath: keyPath].contains(value) },
             set: { isOn in
                 if isOn {
-                    appState.cardFilter[keyPath: keyPath].insert(value)
+                    window.cardFilter[keyPath: keyPath].insert(value)
                 } else {
-                    appState.cardFilter[keyPath: keyPath].remove(value)
+                    window.cardFilter[keyPath: keyPath].remove(value)
                 }
             }
         )
     }
 
     private var filterStatus: some View {
-        let all = appState.stacks.flatMap { $0.cards ?? [] }
-        let shown = all.filter { appState.cardFilter.matches($0) }.count
+        let all = window.stacks.flatMap { $0.cards ?? [] }
+        let shown = all.filter { window.cardFilter.matches($0) }.count
         return HStack(spacing: 8) {
             Image(systemName: "line.3.horizontal.decrease.circle.fill")
                 .foregroundStyle(.tint)
@@ -280,7 +284,7 @@ struct BoardDetailView: View {
                 .foregroundStyle(.secondary)
             Spacer()
             Button("Clear") {
-                appState.cardFilter = CardFilter()
+                window.cardFilter = CardFilter()
             }
             .buttonStyle(.link)
         }
@@ -302,7 +306,7 @@ struct BoardDetailView: View {
 
     @ViewBuilder
     private func scrollableStacks(_ board: Board) -> some View {
-        if appState.isLoadingStacks && appState.stacks.isEmpty {
+        if window.isLoadingStacks && window.stacks.isEmpty {
             VStack(spacing: 12) {
                 ProgressView()
                     .scaleEffect(1.2)
@@ -310,7 +314,7 @@ struct BoardDetailView: View {
                     .foregroundStyle(.secondary)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else if let err = appState.stacksError, appState.stacks.isEmpty {
+        } else if let err = window.stacksError, window.stacks.isEmpty {
             ContentUnavailableView {
                 Label("Could not load lists", systemImage: "exclamationmark.triangle")
             } description: {
@@ -325,18 +329,19 @@ struct BoardDetailView: View {
             ScrollView(.horizontal, showsIndicators: true) {
                 HStack(alignment: .top, spacing: 0) {
                     stackInsertionGap(at: 0, boardId: board.id)
-                    ForEach(Array(appState.stacks.enumerated()), id: \.element.id) { index, stack in
+                    ForEach(Array(window.stacks.enumerated()), id: \.element.id) { index, stack in
                         StackColumnView(
                             board: board,
                             stack: stack,
                             onSelectCard: { card in
-                                appState.selectedCardId = card.id
-                                appState.openedCard = card
+                                window.selectedCardId = card.id
+                                window.openedCard = card
                             }
                         )
                         .environmentObject(appState)
+                        .environmentObject(window)
                         .draggableList(DraggedStack(id: stack.id, index: index), enabled: !appState.isReadOnly) {
-                            appState.isDraggingStack = true
+                            window.isDraggingStack = true
                         }
                         stackInsertionGap(at: index + 1, boardId: board.id)
                     }
@@ -350,22 +355,22 @@ struct BoardDetailView: View {
             .onKeyPress(keys: [.upArrow, .downArrow, .leftArrow, .rightArrow, .return]) { press in
                 handleKey(press.key)
             }
-            .onChange(of: appState.selectedCardId) { _, id in
+            .onChange(of: window.selectedCardId) { _, id in
                 // A card selected from the menus or by creating it: the arrow keys carry on from there.
-                if id != nil, appState.openedCard == nil, appState.newCardListId == nil {
+                if id != nil, window.openedCard == nil, window.newCardListId == nil {
                     isBoardFocused = true
                 }
             }
-            .onChange(of: appState.openedCard?.id) { _, id in
+            .onChange(of: window.openedCard?.id) { _, id in
                 // Back from the card's sheet: carry on with the keyboard.
-                if id == nil, appState.selectedCardId != nil {
+                if id == nil, window.selectedCardId != nil {
                     isBoardFocused = true
                 }
             }
             .onDrop(of: stackDropTypes, isTargeted: nil) { _ in
                 // Catch-all: reset stack-dragging state for drops that miss a gap
                 dragLogger.notice("Drop outside the lists ignored")
-                appState.isDraggingStack = false
+                window.isDraggingStack = false
                 return false
             }
         }
@@ -376,7 +381,7 @@ struct BoardDetailView: View {
     /// in the gap, which ignored it and left the card where it was.
     @ViewBuilder
     private func stackInsertionGap(at index: Int, boardId: Int) -> some View {
-        let targeted = stackDragInsertIndex == index && appState.isDraggingStack
+        let targeted = stackDragInsertIndex == index && window.isDraggingStack
         ZStack(alignment: .center) {
             Color.clear
                 .frame(width: targeted ? 80 : 16)
@@ -399,7 +404,7 @@ struct BoardDetailView: View {
             isTargeted: Binding(
                 get: { stackDragInsertIndex == index },
                 set: { isTargeted in
-                    if isTargeted, appState.isDraggingStack {
+                    if isTargeted, window.isDraggingStack {
                         stackDragInsertIndex = index
                     } else if stackDragInsertIndex == index {
                         stackDragInsertIndex = nil
@@ -407,8 +412,8 @@ struct BoardDetailView: View {
                 }
             ),
             perform: { providers in
-                dragLogger.notice("Drop between lists at \(index), list drag: \(appState.isDraggingStack)")
-                guard appState.isDraggingStack else { return false }
+                dragLogger.notice("Drop between lists at \(index), list drag: \(window.isDraggingStack)")
+                guard window.isDraggingStack else { return false }
                 return handleStackDrop(providers: providers, insertIndex: index, boardId: boardId)
             }
         )
@@ -420,18 +425,18 @@ struct BoardDetailView: View {
             .upArrow: .up, .downArrow: .down, .leftArrow: .left, .rightArrow: .right,
         ]
         if let direction = directions[key] {
-            appState.selectCard(direction)
+            window.selectCard(direction)
             return .handled
         }
-        guard key == .return, appState.selectedCard != nil else { return .ignored }
-        appState.openSelectedCard()
+        guard key == .return, window.selectedCard != nil else { return .ignored }
+        window.openSelectedCard()
         return .handled
     }
 
     private func handleStackDrop(providers: [NSItemProvider], insertIndex: Int, boardId: Int) -> Bool {
         providers.loadDroppedText { text in
             Task { @MainActor in
-                appState.isDraggingStack = false
+                window.isDraggingStack = false
                 guard let draggedStack = DraggedStack.fromProviderString(text) else { return }
                 await appState.reorderStacks(
                     boardId: boardId,
@@ -445,7 +450,7 @@ struct BoardDetailView: View {
 
 #Preview {
     BoardDetailView()
-        .environmentObject(AppState())
+        .previewEnvironment()
 }
 
 private extension View {

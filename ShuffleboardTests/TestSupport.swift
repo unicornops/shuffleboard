@@ -246,3 +246,22 @@ final class InMemoryBoardCacheStore: BoardCacheStore {
         snapshots[accountId] = nil
     }
 }
+
+// MARK: - Windows
+
+/// The windows the tests open, kept for the whole run: `AppState` only holds its windows weakly, as the app's views
+/// own them. Each keeps its `AppState`, so an id here is never reused by another one.
+@MainActor private var testWindows: [ObjectIdentifier: BoardWindow] = [:]
+
+@MainActor
+extension AppState {
+    /// The window the tests look through (#160): the first one opened on this `AppState`, opened on first use.
+    var window: BoardWindow {
+        if let window = testWindows[ObjectIdentifier(self)] {
+            return window
+        }
+        let window = windows.first ?? BoardWindow(app: self)
+        testWindows[ObjectIdentifier(self)] = window
+        return window
+    }
+}

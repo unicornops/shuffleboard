@@ -93,7 +93,7 @@ final class AccountTests: XCTestCase {
 
         XCTAssertEqual(app.activeAccount?.username, "alice")
         XCTAssertEqual(app.boards.map(\.id), [7])
-        XCTAssertEqual(app.selectedBoardId, 7)
+        XCTAssertEqual(app.window.selectedBoardId, 7)
         XCTAssertEqual(store.saved.active?.username, "alice", "remembered for next launch")
     }
 

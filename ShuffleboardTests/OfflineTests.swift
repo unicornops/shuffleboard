@@ -47,7 +47,15 @@ final class OfflineTests: XCTestCase {
         accounts: InMemoryCredentialStore = .signedIn()
     )
         -> AppState {
-        AppState(credentialStore: accounts, session: StubURLProtocol.session(), openURL: { _ in }, boardCache: cache)
+        let app = AppState(
+            credentialStore: accounts,
+            session: StubURLProtocol.session(),
+            openURL: { _ in },
+            boardCache: cache
+        )
+        // The app's window, as at launch.
+        _ = app.window
+        return app
     }
 
     /// A copy of rob's boards: "Saved board" open, with one list and card.
@@ -146,8 +154,8 @@ final class OfflineTests: XCTestCase {
 
         // Straight away, before any request has finished.
         XCTAssertEqual(app.boards.map(\.title), ["Saved board"])
-        XCTAssertEqual(app.selectedBoardId, 1, "the board that was open")
-        XCTAssertEqual(app.stacks.first?.cards?.map(\.title), ["Saved card"])
+        XCTAssertEqual(app.window.selectedBoardId, 1, "the board that was open")
+        XCTAssertEqual(app.window.stacks.first?.cards?.map(\.title), ["Saved card"])
 
         await waitUntil { app.connectionProblem != nil }
         XCTAssertEqual(app.connectionProblem, .serverUnreachable)
@@ -155,7 +163,7 @@ final class OfflineTests: XCTestCase {
         XCTAssertEqual(app.boards.map(\.title), ["Saved board"], "the copy stays on screen")
         XCTAssertNil(app.errorMessage)
         XCTAssertNil(app.actionError, "the offline banner says it, not an error")
-        XCTAssertEqual(app.offlineDataDate, Date(timeIntervalSince1970: 1_700_000_000))
+        XCTAssertEqual(app.window.offlineDataDate, Date(timeIntervalSince1970: 1_700_000_000))
     }
 
     func testLaunchReplacesTheSavedBoardsWithTheServersAndSavesThem() async throws {
@@ -163,7 +171,7 @@ final class OfflineTests: XCTestCase {
         let app = makeApp(cache)
         await waitUntil { app.boards.first?.title == "Server board" && !app.isLoading }
         await app.loadStacks(boardId: 1)
-        XCTAssertEqual(app.stacks.first?.cards?.map(\.title), ["From the server"])
+        XCTAssertEqual(app.window.stacks.first?.cards?.map(\.title), ["From the server"])
         XCTAssertNil(app.connectionProblem)
 
         app.flushCache()
@@ -178,7 +186,7 @@ final class OfflineTests: XCTestCase {
         let cache = InMemoryBoardCacheStore()
         let app = makeApp(cache)
         XCTAssertTrue(app.boards.isEmpty)
-        await waitUntil { app.selectedBoardId == 1 && !app.isLoading }
+        await waitUntil { app.window.selectedBoardId == 1 && !app.isLoading }
         await app.loadStacks(boardId: 1)
         app.flushCache()
         XCTAssertEqual(cache.snapshots[Self.rob]?.boards.map(\.title), ["Server board"])
@@ -199,19 +207,19 @@ final class OfflineTests: XCTestCase {
 
     func testLosingTheConnectionKeepsTheBoardOnScreenUntilItsBack() async {
         let app = makeApp(InMemoryBoardCacheStore())
-        await waitUntil { app.selectedBoardId == 1 && !app.isLoading }
+        await waitUntil { app.window.selectedBoardId == 1 && !app.isLoading }
         await app.loadStacks(boardId: 1)
 
         setReachable(false)
         await app.refreshIfChanged()
         XCTAssertEqual(app.connectionProblem, .serverUnreachable)
-        XCTAssertEqual(app.stacks.first?.cards?.map(\.title), ["From the server"])
-        XCTAssertNil(app.stacksError)
+        XCTAssertEqual(app.window.stacks.first?.cards?.map(\.title), ["From the server"])
+        XCTAssertNil(app.window.stacksError)
 
         // A full reload fails the same way, without an error over the lists.
         await app.loadStacks(boardId: 1)
-        XCTAssertEqual(app.stacks.first?.cards?.map(\.title), ["From the server"])
-        XCTAssertNil(app.stacksError)
+        XCTAssertEqual(app.window.stacks.first?.cards?.map(\.title), ["From the server"])
+        XCTAssertNil(app.window.stacksError)
         XCTAssertNil(app.actionError)
 
         setReachable(true)
@@ -227,22 +235,22 @@ final class OfflineTests: XCTestCase {
         let app = makeApp(InMemoryBoardCacheStore([Self.rob: snapshot]))
         await waitUntil { app.connectionProblem != nil && !app.isLoading }
         await app.loadStacks(boardId: 1)
-        XCTAssertTrue(app.stacks.isEmpty)
-        XCTAssertEqual(app.stacksError?.contains("haven't been saved on this Mac"), true)
+        XCTAssertTrue(app.window.stacks.isEmpty)
+        XCTAssertEqual(app.window.stacksError?.contains("haven't been saved on this Mac"), true)
     }
 
     func testEditingIsOffWhileOffline() async throws {
         setReachable(false)
         let app = try makeApp(InMemoryBoardCacheStore([Self.rob: Self.savedSnapshot()]))
         await waitUntil { app.connectionProblem != nil }
-        app.selectedCardId = 100
-        XCTAssertNotNil(app.selectedCard)
-        XCTAssertFalse(app.canChangeSelectedCard)
-        XCTAssertFalse(app.canMoveSelectedCard)
-        app.startNewCard()
-        XCTAssertNil(app.newCardListId)
-        app.requestDeletingSelectedCard()
-        XCTAssertNil(app.cardPendingDelete)
+        app.window.selectedCardId = 100
+        XCTAssertNotNil(app.window.selectedCard)
+        XCTAssertFalse(app.window.canChangeSelectedCard)
+        XCTAssertFalse(app.window.canMoveSelectedCard)
+        app.window.startNewCard()
+        XCTAssertNil(app.window.newCardListId)
+        app.window.requestDeletingSelectedCard()
+        XCTAssertNil(app.window.cardPendingDelete)
     }
 
     func testSearchFindsCardsOnSavedBoards() async throws {
@@ -251,9 +259,9 @@ final class OfflineTests: XCTestCase {
         setReachable(false)
         let app = makeApp(InMemoryBoardCacheStore([Self.rob: snapshot]))
         await waitUntil { app.connectionProblem != nil && !app.isLoading }
-        app.selectedBoardId = nil
-        app.cardSearchText = "saved"
-        XCTAssertEqual(app.cardSearchResults.flatMap(\.results).map(\.card.title), ["Saved card"])
+        app.window.selectedBoardId = nil
+        app.window.cardSearchText = "saved"
+        XCTAssertEqual(app.window.cardSearchResults.flatMap(\.results).map(\.card.title), ["Saved card"])
     }
 
     func testRemindersAlreadyScheduledStayWhileOffline() async throws {
@@ -282,7 +290,7 @@ final class OfflineTests: XCTestCase {
             reminders: CardReminderSync(notifications: notifications, defaults: defaults),
             boardCache: cache
         )
-        await waitUntil { online.selectedBoardId == 1 && !online.isLoading }
+        await waitUntil { online.window.selectedBoardId == 1 && !online.isLoading }
         await online.updateReminders()
         XCTAssertEqual(notifications.pending.count, 2, "a day before, and when it's due")
         online.flushCache()

@@ -81,29 +81,29 @@ final class ServerAppStateTests: XCTestCase {
         XCTAssertEqual(app.serverDeckVersion, server.deckVersion)
         XCTAssertEqual(app.supportsStartDates, server.deck(atLeast: "1.18"))
 
-        app.selectBoard(board)
+        app.window.selectBoard(board)
         await app.loadStacks(boardId: board.id)
         let addedTodo = await app.createStack(boardId: board.id, title: "To do")
         let addedDone = await app.createStack(boardId: board.id, title: "Done")
         XCTAssertTrue(addedTodo && addedDone, app.errorMessage ?? "")
-        XCTAssertEqual(app.stacks.map(\.title), ["To do", "Done"])
-        let todo = app.stacks[0]
-        let done = app.stacks[1]
+        XCTAssertEqual(app.window.stacks.map(\.title), ["To do", "Done"])
+        let todo = app.window.stacks[0]
+        let done = app.window.stacks[1]
 
-        await app.createCard(boardId: board.id, stackId: todo.id, title: "Ship it")
+        await app.window.createCard(boardId: board.id, stackId: todo.id, title: "Ship it")
         XCTAssertNil(app.actionError)
-        let card = try XCTUnwrap(app.stacks.first?.activeCards.first)
+        let card = try XCTUnwrap(app.window.stacks.first?.activeCards.first)
         XCTAssertEqual(card.title, "Ship it")
 
         // The #117 regression: after a move, the reload from the server must still show the card in "Done".
         await app.moveCard(boardId: board.id, cardId: card.id, fromStackId: todo.id, toStackId: done.id, order: 0)
         XCTAssertNil(app.actionError)
-        XCTAssertEqual(app.stacks.stack(holding: card.id)?.id, done.id)
+        XCTAssertEqual(app.window.stacks.stack(holding: card.id)?.id, done.id)
         await app.refresh()
-        await waitUntil(timeout: 10) { !app.isLoading && !app.isLoadingStacks }
-        XCTAssertEqual(app.stacks.stack(holding: card.id)?.id, done.id, "Card snapped back after a refresh")
+        await waitUntil(timeout: 10) { !app.isLoading && !app.window.isLoadingStacks }
+        XCTAssertEqual(app.window.stacks.stack(holding: card.id)?.id, done.id, "Card snapped back after a refresh")
 
-        let moved = try XCTUnwrap(app.stacks.stack(holding: card.id)?.activeCards.first { $0.id == card.id })
+        let moved = try XCTUnwrap(app.window.stacks.stack(holding: card.id)?.activeCards.first { $0.id == card.id })
         let saved = await app.updateCard(
             boardId: board.id,
             stackId: done.id,
@@ -111,7 +111,7 @@ final class ServerAppStateTests: XCTestCase {
             edits: CardEdits(title: "Shipped", description: "Release notes", startDate: nil, dueDate: nil, isDone: true)
         )
         XCTAssertTrue(saved, app.errorMessage ?? "")
-        let edited = try XCTUnwrap(app.stacks.stack(holding: card.id)?.activeCards.first { $0.id == card.id })
+        let edited = try XCTUnwrap(app.window.stacks.stack(holding: card.id)?.activeCards.first { $0.id == card.id })
         XCTAssertEqual(edited.title, "Shipped")
         XCTAssertEqual(edited.description, "Release notes")
         XCTAssertTrue(edited.isDone)
@@ -142,7 +142,7 @@ final class ServerAppStateTests: XCTestCase {
         let deleted = try XCTUnwrap(app.deletedBoards.first { $0.id == board.id }, "Not under Recently Deleted")
         XCTAssertTrue(deleted.canManage, "The owner can restore it")
 
-        await app.restoreBoard(id: board.id)
+        await app.window.restoreBoard(id: board.id)
 
         guard server.deck(atLeast: "1.17") else {
             XCTAssertEqual(app.actionError, AppState.restoreUnsupportedMessage(deckVersion: server.deckVersion))
@@ -151,7 +151,7 @@ final class ServerAppStateTests: XCTestCase {
         }
         XCTAssertNil(app.actionError)
         XCTAssertTrue(app.activeBoards.contains { $0.id == board.id }, "Restored board not back with the others")
-        XCTAssertEqual(app.selectedBoardId, board.id)
+        XCTAssertEqual(app.window.selectedBoardId, board.id)
         let onServer = try await server.api(for: TestServer.alice).getBoard(id: board.id)
         XCTAssertFalse(onServer.isDeleted)
         await app.deleteBoard(id: board.id)
@@ -191,18 +191,18 @@ final class ServerAppStateTests: XCTestCase {
         XCTAssertTrue(created, app.errorMessage ?? "")
         let board = try XCTUnwrap(app.boards.first { $0.title == title })
         XCTAssertTrue(board.canEdit, "The owner can edit the board")
-        app.selectBoard(board)
+        app.window.selectBoard(board)
         await app.loadStacks(boardId: board.id)
         for list in ["To do", "Doing", "Done"] {
             let added = await app.createStack(boardId: board.id, title: list)
             XCTAssertTrue(added, app.errorMessage ?? "")
         }
-        let doing = try XCTUnwrap(app.stacks.first { $0.title == "Doing" })
+        let doing = try XCTUnwrap(app.window.stacks.first { $0.title == "Doing" })
 
         await app.renameStack(boardId: board.id, stackId: doing.id, title: "In progress")
 
         XCTAssertNil(app.actionError)
-        XCTAssertEqual(app.stacks.map(\.title), ["To do", "In progress", "Done"])
+        XCTAssertEqual(app.window.stacks.map(\.title), ["To do", "In progress", "Done"])
         let onServer = try await server.api(for: TestServer.alice).getStacks(boardId: board.id)
         XCTAssertEqual(AppState.sorted(onServer).map(\.title), ["To do", "In progress", "Done"], "Renamed list moved")
         await app.deleteBoard(id: board.id)
@@ -216,13 +216,13 @@ final class ServerAppStateTests: XCTestCase {
         let app = try await signedInApp()
         await app.loadBoards()
         let board = try XCTUnwrap(app.boards.first { $0.title == "Big backlog" }, "No large board: run seed.sh")
-        app.selectBoard(board)
+        app.window.selectBoard(board)
         await app.loadStacks(boardId: board.id)
 
-        XCTAssertNil(app.stacksError)
-        XCTAssertEqual(app.stacks.map(\.title), (1 ... 12).map { "List \($0)" })
-        XCTAssertEqual(app.stacks.reduce(0) { $0 + $1.activeCards.count }, 300)
-        let first = try XCTUnwrap(app.stacks.first)
+        XCTAssertNil(app.window.stacksError)
+        XCTAssertEqual(app.window.stacks.map(\.title), (1 ... 12).map { "List \($0)" })
+        XCTAssertEqual(app.window.stacks.reduce(0) { $0 + $1.activeCards.count }, 300)
+        let first = try XCTUnwrap(app.window.stacks.first)
         XCTAssertEqual(first.activeCards.map(\.title), (1 ... 25).map { "Card 1.\($0)" })
         XCTAssertEqual(first.activeCards.count { !($0.labels ?? []).isEmpty }, 8, "Labels missing")
         XCTAssertEqual(first.activeCards.count { $0.duedate != nil }, 6, "Due dates missing")
@@ -234,13 +234,13 @@ final class ServerAppStateTests: XCTestCase {
         let other = try await server.api(for: TestServer.alice)
         try await withTemporaryBoard(other) { board in
             await app.loadBoards()
-            app.selectBoard(board)
+            app.window.selectBoard(board)
             await app.loadStacks(boardId: board.id)
-            XCTAssertTrue(app.stacks.isEmpty)
+            XCTAssertTrue(app.window.stacks.isEmpty)
 
             let stack = try await other.createStack(boardId: board.id, title: "Added elsewhere")
             await app.refreshIfChanged()
-            XCTAssertEqual(app.stacks.map(\.id), [stack.id])
+            XCTAssertEqual(app.window.stacks.map(\.id), [stack.id])
 
             // Once the lists are settled, an unchanged board list skips them (#141); a card added elsewhere
             // changes the board list's ETag, so the lists are downloaded again. Deck's ETags have 1-second steps.
@@ -249,7 +249,11 @@ final class ServerAppStateTests: XCTestCase {
             await sleep(seconds: 1.1)
             let card = try await other.createCard(boardId: board.id, stackId: stack.id, title: "Card from elsewhere")
             await app.refreshIfChanged()
-            XCTAssertEqual(app.stacks.first?.activeCards.map(\.id), [card.id], "Card added elsewhere not picked up")
+            XCTAssertEqual(
+                app.window.stacks.first?.activeCards.map(\.id),
+                [card.id],
+                "Card added elsewhere not picked up"
+            )
         }
     }
 
@@ -272,9 +276,9 @@ final class ServerAppStateTests: XCTestCase {
                 _ = try await other.createCard(boardId: second.id, stackId: secondList.id, title: "Haystack")
                 await app.loadBoards()
 
-                app.cardSearchText = word
+                app.window.cardSearchText = word
                 await app.loadCardsForSearch()
-                let found = app.cardSearchResults.filter { [first.id, second.id].contains($0.board.id) }
+                let found = app.window.cardSearchResults.filter { [first.id, second.id].contains($0.board.id) }
                 XCTAssertEqual(Set(found.map(\.board.id)), [first.id, second.id])
                 let titles = found.flatMap(\.results).map { "\($0.card.title) in \($0.listTitle)" }
                 XCTAssertEqual(Set(titles), ["\(word) one in To do", "\(word) two in Doing"])
@@ -284,7 +288,7 @@ final class ServerAppStateTests: XCTestCase {
                 await sleep(seconds: 1.6)
                 _ = try await other.createCard(boardId: first.id, stackId: firstList.id, title: "\(word) three")
                 await app.loadCardsForSearch()
-                let again = app.cardSearchResults.flatMap(\.results).map(\.card.title)
+                let again = app.window.cardSearchResults.flatMap(\.results).map(\.card.title)
                 XCTAssertTrue(again.contains("\(word) three"), "New card not found: \(again)")
             }
         }

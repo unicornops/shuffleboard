@@ -2,6 +2,7 @@ import SwiftUI
 
 struct BoardListView: View {
     @EnvironmentObject private var appState: AppState
+    @EnvironmentObject private var window: BoardWindow
     @State private var pendingBoardDelete: Int?
     @State private var editingBoard: Board?
     @State private var duplicatingBoard: Board?
@@ -12,7 +13,7 @@ struct BoardListView: View {
     @State private var highlightedResult: CardSearchResult.ID?
 
     private var isSearching: Bool {
-        !appState.cardSearchText.trimmingCharacters(in: .whitespaces).isEmpty
+        !window.cardSearchText.trimmingCharacters(in: .whitespaces).isEmpty
     }
 
     var body: some View {
@@ -39,7 +40,7 @@ struct BoardListView: View {
                 VStack(spacing: 0) {
                     Divider()
                     Button {
-                        appState.showingNewBoard = true
+                        window.showingNewBoard = true
                     } label: {
                         Label("New Board", systemImage: "plus")
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -54,9 +55,9 @@ struct BoardListView: View {
                 }
                 .background(.background)
             }
-            .sheet(isPresented: $appState.showingNewBoard) {
+            .sheet(isPresented: $window.showingNewBoard) {
                 BoardSheet {
-                    appState.showingNewBoard = false
+                    window.showingNewBoard = false
                 }
             }
             .sheet(item: $editingBoard) { board in
@@ -100,11 +101,11 @@ struct BoardListView: View {
 
     private var boardList: some View {
         List(selection: Binding(
-            get: { appState.selectedBoardId },
+            get: { window.selectedBoardId },
             set: { new in
-                appState.selectedBoardId = new
+                window.selectedBoardId = new
                 if let bid = new, let board = appState.boards.first(where: { $0.id == bid }) {
-                    appState.selectBoard(board)
+                    window.selectBoard(board)
                 }
             }
         )) {
@@ -146,7 +147,7 @@ struct BoardListView: View {
             } else {
                 ForEach(appState.activeBoards) { board in
                     Button {
-                        appState.selectBoard(board)
+                        window.selectBoard(board)
                     } label: {
                         BoardRowView(board: board)
                     }
@@ -173,7 +174,7 @@ struct BoardListView: View {
             Section("Archived") {
                 ForEach(appState.archivedBoards) { board in
                     Button {
-                        appState.selectBoard(board)
+                        window.selectBoard(board)
                     } label: {
                         BoardRowView(board: board)
                     }
@@ -226,7 +227,7 @@ struct BoardListView: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                         if board.canManage, !appState.isReadOnly {
                             Button {
-                                Task { await appState.restoreBoard(id: board.id) }
+                                Task { await window.restoreBoard(id: board.id) }
                             } label: {
                                 Image(systemName: "arrow.uturn.backward")
                             }
@@ -241,7 +242,7 @@ struct BoardListView: View {
                     .contextMenu {
                         if board.canManage, !appState.isReadOnly {
                             Button("Restore") {
-                                Task { await appState.restoreBoard(id: board.id) }
+                                Task { await window.restoreBoard(id: board.id) }
                             }
                         }
                     }
@@ -287,5 +288,5 @@ private struct BoardRowView: View {
 
 #Preview {
     BoardListView()
-        .environmentObject(AppState())
+        .previewEnvironment()
 }

@@ -4,6 +4,7 @@ import SwiftUI
 /// cursor in it; the up and down arrows move through the results, Return opens one and Escape clears the search.
 struct CardSearchField: View {
     @EnvironmentObject private var appState: AppState
+    @EnvironmentObject private var window: BoardWindow
     @Binding var highlighted: CardSearchResult.ID?
     @FocusState private var isFocused: Bool
 
@@ -11,17 +12,17 @@ struct CardSearchField: View {
         HStack(spacing: 6) {
             Image(systemName: "magnifyingglass")
                 .foregroundStyle(.secondary)
-            TextField("Search All Boards", text: $appState.cardSearchText)
+            TextField("Search All Boards", text: $window.cardSearchText)
                 .textFieldStyle(.plain)
                 .focused($isFocused)
                 .accessibilityIdentifier("Search all boards")
                 .onSubmit(openHighlighted)
-                .onExitCommand { appState.cardSearchText = "" }
+                .onExitCommand { window.cardSearchText = "" }
                 .onKeyPress(.downArrow) { moveHighlight(by: 1) }
                 .onKeyPress(.upArrow) { moveHighlight(by: -1) }
-            if !appState.cardSearchText.isEmpty {
+            if !window.cardSearchText.isEmpty {
                 Button {
-                    appState.cardSearchText = ""
+                    window.cardSearchText = ""
                 } label: {
                     Image(systemName: "xmark.circle.fill")
                         .foregroundStyle(.secondary)
@@ -40,10 +41,10 @@ struct CardSearchField: View {
         )
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
-        .onChange(of: appState.cardSearchFocusRequest) {
+        .onChange(of: window.cardSearchFocusRequest) {
             isFocused = true
         }
-        .onChange(of: appState.cardSearchText) { old, new in
+        .onChange(of: window.cardSearchText) { old, new in
             highlighted = nil
             // Fetch the boards' cards when a search starts; later keystrokes search what was fetched.
             if old.trimmingCharacters(in: .whitespaces).isEmpty, !new.trimmingCharacters(in: .whitespaces).isEmpty {
@@ -53,7 +54,7 @@ struct CardSearchField: View {
     }
 
     private var results: [CardSearchResult] {
-        appState.cardSearchResults.flatMap(\.results)
+        window.cardSearchResults.flatMap(\.results)
     }
 
     private func moveHighlight(by step: Int) -> KeyPress.Result {
@@ -69,7 +70,7 @@ struct CardSearchField: View {
         let results = results
         guard let result = results.first(where: { $0.id == highlighted }) ?? results.first else { return }
         highlighted = result.id
-        appState.open(result)
+        window.open(result)
     }
 }
 
@@ -77,10 +78,11 @@ struct CardSearchField: View {
 /// (the same list, so typing in the search field keeps its focus). Clicking one opens it.
 struct CardSearchResults: View {
     @EnvironmentObject private var appState: AppState
+    @EnvironmentObject private var window: BoardWindow
     let highlighted: CardSearchResult.ID?
 
     var body: some View {
-        let groups = appState.cardSearchResults
+        let groups = window.cardSearchResults
         if groups.isEmpty {
             if appState.isLoadingAllCards {
                 HStack {
@@ -98,7 +100,7 @@ struct CardSearchResults: View {
             Section(group.board.title) {
                 ForEach(group.results) { result in
                     Button {
-                        appState.open(result)
+                        window.open(result)
                     } label: {
                         CardSearchRow(result: result)
                     }

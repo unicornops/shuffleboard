@@ -7,6 +7,7 @@ struct CardDetailSheet: View {
     let boardId: Int
     var onDismiss: () -> Void
     @EnvironmentObject private var appState: AppState
+    @EnvironmentObject private var window: BoardWindow
     @Environment(\.dismiss) private var dismiss
 
     @State private var title: String
@@ -39,13 +40,13 @@ struct CardDetailSheet: View {
     }
 
     private var board: Board? {
-        guard let b = appState.selectedBoard, b.id == boardId else { return nil }
+        guard let b = window.selectedBoard, b.id == boardId else { return nil }
         return b
     }
 
     /// Latest card from stacks so label assign/remove updates in the sheet.
     private var currentCard: Card? {
-        guard let stack = appState.stacks.first(where: { $0.id == card.stackId }) else { return nil }
+        guard let stack = window.stacks.first(where: { $0.id == card.stackId }) else { return nil }
         return stack.cards?.first(where: { $0.id == card.id })
     }
 
