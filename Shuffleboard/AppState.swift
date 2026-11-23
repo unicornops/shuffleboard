@@ -169,7 +169,7 @@ final class AppState: ObservableObject {
         if isLoggedIn, let account = activeAccount {
             logout()
             if isLoggedIn {
-                actionError = "Signed out of \(account.id): \(error.localizedDescription)"
+                actionError = String(localized: "Signed out of \(account.id): \(error.localizedDescription)")
             } else {
                 errorMessage = error.localizedDescription
             }
@@ -296,8 +296,10 @@ final class AppState: ObservableObject {
                 // The saved lists stay on screen under the offline banner; without them, say why there are none.
                 if lists[boardId]?.stacks.isEmpty == true {
                     updateLists(of: boardId) {
-                        $0.error = "This board's lists haven't been saved on this Mac yet, so they can't be shown "
-                            + "until the server can be reached."
+                        $0.error = String(localized: """
+                        This board's lists haven't been saved on this Mac yet, so they can't be shown until the \
+                        server can be reached.
+                        """)
                     }
                 }
                 return
@@ -554,8 +556,10 @@ extension AppState {
     }
 
     nonisolated static func restoreUnsupportedMessage(deckVersion: String) -> String {
-        "This server has Deck \(deckVersion), which can't restore deleted boards. Deck 1.17 or later can; "
-            + "your Nextcloud administrator can update it."
+        String(localized: """
+        This server has Deck \(deckVersion), which can't restore deleted boards. Deck 1.17 or later can; your \
+        Nextcloud administrator can update it.
+        """)
     }
 
     /// Deletes a board. Deck keeps it restorable for a while, so it moves to "Recently Deleted" in the sidebar.
@@ -871,7 +875,9 @@ struct CardEdits {
         return startDate <= dueDate
     }
 
-    static let datesOutOfOrderMessage = "The start date is after the due date."
+    static var datesOutOfOrderMessage: String {
+        String(localized: "The start date is after the due date.")
+    }
 }
 
 @MainActor

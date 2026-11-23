@@ -177,8 +177,8 @@ enum KeychainError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case let .saveFailed(s): "Keychain save failed: \(s)"
-        case let .deleteFailed(s): "Keychain delete failed: \(s)"
+        case let .saveFailed(s): String(localized: "Keychain save failed: \(s)")
+        case let .deleteFailed(s): String(localized: "Keychain delete failed: \(s)")
         }
     }
 }

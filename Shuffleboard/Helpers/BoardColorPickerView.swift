@@ -26,7 +26,7 @@ struct BoardColorPickerView: View {
 
     /// The palette offered to the user. Matches the colours shown in the
     /// Nextcloud Deck web UI.
-    static let presetColors: [(name: String, hex: String)] = [
+    static let presetColors: [(name: LocalizedStringResource, hex: String)] = [
         ("Blue", "0082c9"),
         ("Green", "31CC7C"),
         ("Red", "FF7A66"),
@@ -53,7 +53,7 @@ struct BoardColorPickerView: View {
 
     // MARK: - Private helpers
 
-    private func swatchButton(for preset: (name: String, hex: String)) -> some View {
+    private func swatchButton(for preset: (name: LocalizedStringResource, hex: String)) -> some View {
         Button {
             selectedHex = preset.hex
         } label: {
@@ -69,12 +69,12 @@ struct BoardColorPickerView: View {
                 )
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(preset.name)
+        .accessibilityLabel(Text(preset.name))
         .accessibilityAddTraits(isSelected(preset) ? .isSelected : [])
     }
 
     /// Deck keeps colours as they were sent, so a board's colour may be in either case.
-    private func isSelected(_ preset: (name: String, hex: String)) -> Bool {
+    private func isSelected(_ preset: (name: LocalizedStringResource, hex: String)) -> Bool {
         selectedHex.caseInsensitiveCompare(preset.hex) == .orderedSame
     }
 }

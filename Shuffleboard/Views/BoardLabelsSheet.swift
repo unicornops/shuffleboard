@@ -98,8 +98,10 @@ struct BoardLabelsSheet: View {
             }
         } message: {
             if let label = pendingDelete {
-                Text("\u{201c}\(label.title)\u{201d} will be removed from this board and from every card that has it. "
-                    + "This can't be undone.")
+                Text("""
+                “\(label.title)” will be removed from this board and from every card that has it. This can't be \
+                undone.
+                """)
             }
         }
     }
@@ -171,9 +173,9 @@ private struct EditedLabel: Identifiable {
 struct LabelEditorSheet: View {
     static let defaultColor = "31CC7C"
 
-    var heading = "New tag"
-    var placeholder = "Tag name"
-    var actionTitle = "Create"
+    var heading: LocalizedStringKey = "New tag"
+    var placeholder: LocalizedStringKey = "Tag name"
+    var actionTitle: LocalizedStringKey = "Create"
     @Binding var title: String
     @Binding var color: String
     @Binding var isCreating: Bool

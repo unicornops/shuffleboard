@@ -148,7 +148,7 @@ struct CardDetailSheet: View {
                 showDeleteConfirmation = false
             }
         } message: {
-            Text(DeleteConfirmation.message("This card"))
+            Text(DeleteConfirmation.thisCard)
         }
         .confirmationDialog("Remove attachment?", isPresented: Binding(
             get: { pendingAttachmentDelete != nil },
@@ -436,13 +436,23 @@ extension CardDetailSheet {
 
     /// What removing `attachment` does, which depends on how Deck stores it.
     private static func removalMessage(_ attachment: Attachment) -> String {
-        let name = "\u{201c}\(attachment.displayName)\u{201d}"
+        let name = attachment.displayName
         if attachment.canBeRestored {
-            return "\(name) will be removed from this card. You can restore it here until the server clears "
-                + "deleted items."
+            return String(
+                localized: """
+                “\(name)” will be removed from this card. You can restore it here until the server clears deleted \
+                items.
+                """,
+                comment: "Confirming removing an attachment Deck keeps; the file's name is in quotes."
+            )
         }
-        return "\(name) will be removed from this card. This can't be undone, but the file stays in its owner's "
-            + "Files."
+        return String(
+            localized: """
+            “\(name)” will be removed from this card. This can't be undone, but the file stays in its owner's \
+            Files.
+            """,
+            comment: "Confirming removing an attachment kept in someone's Files; the file's name is in quotes."
+        )
     }
 
     private func deleteAttachment(_ attachment: Attachment) {
@@ -517,7 +527,7 @@ extension CardDetailSheet {
             if !loaded.isEmpty {
                 attachments = loaded
             } else if let count = (currentCard ?? card).attachmentCount, count > 0 {
-                attachmentError = "Could not load \(count) attachment(s)."
+                attachmentError = String(localized: "Could not load \(count) attachments.")
             }
             isLoadingAttachments = false
         }
@@ -562,7 +572,8 @@ extension CardDetailSheet {
                 )
                 if !success {
                     await MainActor.run {
-                        appState.actionError = appState.actionError ?? "Could not download attachment"
+                        let fallback = String(localized: "Could not download attachment")
+                        appState.actionError = appState.actionError ?? fallback
                     }
                 }
             }
@@ -677,7 +688,7 @@ extension CardDetailSheet {
                     dismiss()
                     onDismiss()
                 } else {
-                    saveError = appState.errorMessage ?? "Unknown error"
+                    saveError = appState.errorMessage ?? String(localized: "Unknown error")
                 }
             }
         }
@@ -764,6 +775,8 @@ private struct LabelChip: View {
                         .symbolRenderingMode(.hierarchical)
                 }
                 .buttonStyle(.plain)
+                .help("Remove label")
+                .accessibilityLabel("Remove label \(label.title)")
             }
         }
         .padding(.horizontal, 8)

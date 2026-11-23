@@ -31,10 +31,10 @@ struct MarkdownView: View {
                 .fixedSize(horizontal: false, vertical: true)
 
         case let .bullet(text, indent):
-            listRow(marker: Text("•"), text: text, indent: indent)
+            listRow(marker: Text(verbatim: "•"), text: text, indent: indent)
 
         case let .numbered(number, text, indent):
-            listRow(marker: Text("\(number)."), text: text, indent: indent)
+            listRow(marker: Text(verbatim: "\(number)."), text: text, indent: indent)
 
         case let .task(done, text, indent, line):
             HStack(alignment: .firstTextBaseline, spacing: 6) {

@@ -37,6 +37,8 @@ struct LoginView: View {
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
+                // All of it, on as many lines as it takes: a longer translation was cut off after one line (#162).
+                .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: 320)
 
                 VStack(alignment: .leading, spacing: 8) {
@@ -103,10 +105,10 @@ struct LoginView: View {
 
             Spacer()
 
-            Text(
-                "Credentials are stored securely in the Keychain.\n"
-                    + "Shuffleboard is an unofficial client, not affiliated with Nextcloud."
-            )
+            Text("""
+            Credentials are stored securely in the Keychain.
+            Shuffleboard is an unofficial client, not affiliated with Nextcloud.
+            """)
             .font(.caption2)
             .foregroundStyle(.tertiary)
             .multilineTextAlignment(.center)

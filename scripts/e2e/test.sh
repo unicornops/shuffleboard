@@ -3,7 +3,7 @@
 #
 #   scripts/e2e/test.sh api          DeckAPI, AppState and the Shortcuts actions against the server (ShuffleboardTests/Server*)
 #   scripts/e2e/test.sh ui           the UI tests (ShuffleboardUITests), needs seed.sh's demo data
-#   scripts/e2e/test.sh screenshots  only the README screenshots, then saves them to docs/screenshots
+#   scripts/e2e/test.sh screenshots  only the README screenshots, then saves them to docs/screenshots (or E2E_SCREENSHOTS_DIR)
 #
 # Results go to build/<kind>.xcresult. Extra arguments are passed on to xcodebuild.
 set -euo pipefail
@@ -90,5 +90,5 @@ else
 fi
 
 if [ "$KIND" = screenshots ]; then
-    "$(dirname "$0")/export-screenshots.sh" "$result" docs/screenshots
+    "$(dirname "$0")/export-screenshots.sh" "$result" "${E2E_SCREENSHOTS_DIR:-docs/screenshots}"
 fi

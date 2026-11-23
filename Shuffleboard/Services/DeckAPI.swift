@@ -84,6 +84,7 @@ final class DeckAPI: Sendable {
     private var authHeader: String {
         let credentials = "\(username):\(appPassword)"
         guard let data = credentials.data(using: .utf8) else { return "" }
+        // i18n-ignore: an HTTP header
         return "Basic \(data.base64EncodedString())"
     }
 
@@ -183,7 +184,7 @@ final class DeckAPI: Sendable {
         if let ocs = try? decoder.decode(OCSEnvelope.self, from: data) {
             return Tagged(value: ocs.ocs.data, etag: etag)
         }
-        throw DeckAPIError.badRequest("Could not decode boards response")
+        throw DeckAPIError.badRequest(String(localized: "Could not decode boards response"))
     }
 
     private struct OCSBoardsWrapper: Decodable {
@@ -304,6 +305,7 @@ final class DeckAPI: Sendable {
         return try Tagged(value: decodeStacks(from: data, context: "stacks"), etag: Self.etag(of: response))
     }
 
+    /// What was wrong with a response, in developer English, for bug reports.
     private func decodingErrorDescription(_ error: DecodingError) -> String {
         switch error {
         case let .keyNotFound(key, context):
@@ -363,9 +365,9 @@ final class DeckAPI: Sendable {
                 return ocs.ocs.data
             }
             let detail = decodingErrorDescription(arrayError)
-            throw DeckAPIError.badRequest("Could not decode \(context): \(detail)")
+            throw DeckAPIError.undecodable(context, detail)
         } catch {
-            throw DeckAPIError.badRequest("Could not decode \(context): \(error.localizedDescription)")
+            throw DeckAPIError.undecodable(context, error.localizedDescription)
         }
     }
 
@@ -410,7 +412,7 @@ final class DeckAPI: Sendable {
         if let envelope = try? decoder.decode(OCSCardEnvelope.self, from: data) {
             return envelope.ocs.data
         }
-        throw DeckAPIError.badRequest("Could not decode \(context)")
+        throw DeckAPIError.undecodable(context)
     }
 
     func createCard(
@@ -743,7 +745,7 @@ extension DeckAPI {
         }
         let (data, _) = try await performRequest(url: url, method: "GET")
         guard let attachments = decodeAttachments(from: data) else {
-            throw DeckAPIError.badRequest("Could not decode attachments response")
+            throw DeckAPIError.badRequest(String(localized: "Could not decode attachments response"))
         }
         return attachments
     }
@@ -1066,18 +1068,36 @@ enum DeckAPIError: LocalizedError {
     case permissionDenied
     case httpStatus(Int)
 
-    private static let sessionEndedMessage =
-        "Your Nextcloud session has ended — the app password may have been revoked. Please sign in again."
+    /// A response that couldn't be decoded. `context` names what was read, and `detail` says what was wrong; both are
+    /// developer English (e.g. "stacks", "missing key 'id'"), for bug reports.
+    static func undecodable(_ context: String, _ detail: String? = nil) -> Self {
+        guard let detail else {
+            return .badRequest(String(
+                localized: "Could not decode \(context)",
+                comment: "The context is English, e.g. \"stacks\""
+            ))
+        }
+        return .badRequest(String(
+            localized: "Could not decode \(context): \(detail)",
+            comment: "The context and detail are English, e.g. \"stacks\" and \"missing key 'id'\""
+        ))
+    }
+
+    private static var sessionEndedMessage: String {
+        String(localized: """
+        Your Nextcloud session has ended — the app password may have been revoked. Please sign in again.
+        """)
+    }
 
     var errorDescription: String? {
         switch self {
-        case .invalidURL: "Invalid URL"
-        case .invalidResponse: "Invalid response"
-        case .notModified: "Not modified"
-        case let .badRequest(msg): msg
+        case .invalidURL: String(localized: "Invalid URL")
+        case .invalidResponse: String(localized: "Invalid response")
+        case .notModified: String(localized: "Not modified")
+        case let .badRequest(msg): msg // The server's message, or what couldn't be decoded.
         case .unauthorized: Self.sessionEndedMessage
-        case .permissionDenied: "Permission denied"
-        case let .httpStatus(code): "HTTP \(code)"
+        case .permissionDenied: String(localized: "Permission denied")
+        case let .httpStatus(code): String(localized: "HTTP \(code)", comment: "An HTTP status code, e.g. HTTP 500")
         }
     }
 }

@@ -33,12 +33,4 @@ enum ConnectionProblem: Equatable, Sendable {
         }
         return nil
     }
-
-    /// The banner's first sentence.
-    var title: String {
-        switch self {
-        case .offline: "You're offline."
-        case .serverUnreachable: "Can't reach the server."
-        }
-    }
 }

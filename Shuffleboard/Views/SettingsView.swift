@@ -88,10 +88,10 @@ private struct NotificationSettings: View {
                 }
                 .accessibilityIdentifier("assignment notifications")
             } footer: {
-                footnote(
-                    "Shuffleboard checks your boards while it's open. Due date reminders are scheduled ahead, so they "
-                        + "arrive even after you quit. Reminders are for the account you're using."
-                )
+                footnote("""
+                Shuffleboard checks your boards while it's open. Due date reminders are scheduled ahead, so they \
+                arrive even after you quit. Reminders are for the account you're using.
+                """)
             }
         }
         .formStyle(.grouped)
@@ -134,7 +134,7 @@ private struct UpdateSettings: View {
     }
 }
 
-private func footnote(_ text: String) -> some View {
+private func footnote(_ text: LocalizedStringKey) -> some View {
     Text(text)
         .font(.caption)
         .foregroundStyle(.secondary)

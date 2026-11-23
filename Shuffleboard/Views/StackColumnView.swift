@@ -106,7 +106,7 @@ struct StackColumnView: View {
                 pendingDelete = false
             }
         } message: {
-            Text(DeleteConfirmation.message("\u{201c}\(stack.title)\u{201d} and all its cards"))
+            Text(DeleteConfirmation.list(stack.title))
         }
     }
 
@@ -483,20 +483,21 @@ struct CardRowView: View {
                 HStack(spacing: 4) {
                     Image(systemName: "text.bubble")
                         .font(.caption2)
-                    Text("\(count)")
+                    Text(count, format: .number)
                         .font(.caption2)
                 }
                 .foregroundStyle(.secondary)
-                .accessibilityLabel(count == 1 ? "1 comment" : "\(count) comments")
+                .accessibilityLabel("\(count) comments")
             }
             if let count = card.attachmentCount, count > 0 {
                 HStack(spacing: 4) {
                     Image(systemName: "paperclip")
                         .font(.caption2)
-                    Text("\(count)")
+                    Text(count, format: .number)
                         .font(.caption2)
                 }
                 .foregroundStyle(.secondary)
+                .accessibilityLabel("\(count) attachments")
             }
             if !card.assignments.isEmpty {
                 HStack(spacing: -4) {
@@ -582,29 +583,36 @@ struct CardRowView: View {
     private static func datesText(_ card: Card) -> String? {
         let start = card.startDate?.formatted(.dateTime.month(.abbreviated).day())
         switch (start, card.dueDate) {
-        case let (start?, due?): return "\(start) \u{2013} \(dueText(due))"
-        case let (start?, nil): return "Starts \(start)"
+        case let (start?, due?): return String(localized: "\(start) \u{2013} \(dueText(due))", comment: "Start to due")
+        case let (start?, nil): return String(localized: "Starts \(start)", comment: "A card's start date")
         case let (nil, due?): return dueText(due)
         case (nil, nil): return nil
         }
     }
 
-    /// What VoiceOver reads for the row: the title plus done/overdue/due state.
+    /// What VoiceOver reads for the row: the title plus done/overdue/due state, as a list in the user's language.
     private var accessibilityDescription: String {
         var parts = [card.title]
         if card.isDone {
-            parts.append("Done")
+            parts.append(String(localized: "Done", comment: "A card's state, and the button that closes a sheet"))
         }
         if let startDate = card.startDate {
-            parts.append("Starts " + startDate.formatted(.dateTime.month(.wide).day()))
+            let start = startDate.formatted(.dateTime.month(.wide).day())
+            parts.append(String(localized: "Starts \(start)", comment: "A card's start date"))
         }
         if let dueDate = card.dueDate {
-            parts.append((card.isOverdue() ? "Overdue, was due " : "Due ") + Self.dueText(dueDate))
+            let due = Self.dueText(dueDate)
+            parts.append(
+                card.isOverdue()
+                    ? String(localized: "Overdue, was due \(due)", comment: "VoiceOver: a card's due date has passed")
+                    : String(localized: "Due \(due)", comment: "VoiceOver: a card's due date")
+            )
         }
         if !card.assignments.isEmpty {
-            parts.append("Assigned to " + card.assignments.map(\.participant.displayName).joined(separator: ", "))
+            let people = card.assignments.map(\.participant.displayName).formatted(.list(type: .and))
+            parts.append(String(localized: "Assigned to \(people)", comment: "VoiceOver: who a card is assigned to"))
         }
-        return parts.joined(separator: ", ")
+        return parts.formatted(.list(type: .and, width: .narrow))
     }
 }
 

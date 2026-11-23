@@ -50,13 +50,31 @@ struct OfflineBanner: View {
         .accessibilityIdentifier("offline banner")
     }
 
+    /// Whole sentences, so each language can order them its own way.
     private var message: Text {
-        let readOnly = Text(" Editing is off until the connection is back.")
         guard let dataDate else {
-            return Text(problem.title) + readOnly
+            switch problem {
+            case .offline:
+                return Text("You're offline. Editing is off until the connection is back.")
+
+            case .serverUnreachable:
+                return Text("Can't reach the server. Editing is off until the connection is back.")
+            }
         }
-        return Text(problem.title) + Text(" Showing your boards as of ")
-            + Text(dataDate, format: .relative(presentation: .named)) + Text(".") + readOnly
+        let age = Text(dataDate, format: .relative(presentation: .named))
+        switch problem {
+        case .offline:
+            return Text(
+                "You're offline. Showing your boards as of \(age). Editing is off until the connection is back.",
+                comment: "The age is relative, e.g. \"5 minutes ago\"."
+            )
+
+        case .serverUnreachable:
+            return Text(
+                "Can't reach the server. Showing your boards as of \(age). Editing is off until the connection is back.",
+                comment: "The age is relative, e.g. \"5 minutes ago\"."
+            )
+        }
     }
 }
 

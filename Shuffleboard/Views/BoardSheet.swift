@@ -91,7 +91,10 @@ struct DuplicateBoardSheet: View {
     init(board: Board, onDismiss: @escaping () -> Void) {
         self.board = board
         self.onDismiss = onDismiss
-        _title = State(initialValue: "\(board.title) (copy)")
+        _title = State(initialValue: String(
+            localized: "\(board.title) (copy)",
+            comment: "The title of a copy of a board"
+        ))
     }
 
     var body: some View {
@@ -111,8 +114,10 @@ struct DuplicateBoardSheet: View {
             VStack(alignment: .leading, spacing: 6) {
                 Toggle("Copy cards", isOn: $withCards)
                 Text(withCards
-                    ? "Lists, labels and cards are copied, with descriptions, dates and done state. Comments, "
-                    + "attachments, assignments, sharing and archived cards aren't."
+                    ? """
+                    Lists, labels and cards are copied, with descriptions, dates and done state. Comments, \
+                    attachments, assignments, sharing and archived cards aren't.
+                    """
                     : "Lists and labels are copied, without cards. Sharing isn't.")
                     .font(.caption)
                     .foregroundStyle(.secondary)

@@ -1,0 +1,562 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "%@" : {},
+    "%@ (copy)" : {
+      "comment" : "The title of a copy of a board"
+    },
+    "%@ and %lld more" : {
+      "comment" : "Overdue cards: the first few, and how many more"
+    },
+    "%@ is no longer signed in to Shuffleboard. Sign in to it again, or choose another account." : {},
+    "%@ on %@" : {},
+    "%@ will lose access to this board." : {},
+    "%@ · due %@" : {},
+    "%@ · was due %@" : {},
+    "%@ – %@" : {
+      "comment" : "Start to due"
+    },
+    "%@ › %@" : {
+      "comment" : "A card's board and list"
+    },
+    "%lld attachments" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld attachment"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld attachments"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld cards are overdue" : {
+      "comment" : "Notification title",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld card is overdue"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld cards are overdue"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld comments" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld comment"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld comments"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld/%lld" : {},
+    "+%lld" : {},
+    "A card needs a title." : {},
+    "A card's title can be at most 255 characters long." : {},
+    "A day before a card is due, and when it's due, for the cards Deck notifies you about." : {},
+    "About Shuffleboard" : {},
+    "Account" : {},
+    "Account and actions" : {},
+    "Account menu" : {},
+    "Activity" : {},
+    "Add" : {},
+    "Add ${cardTitle} to ${list} on ${board}" : {},
+    "Add Account" : {},
+    "Add Account…" : {},
+    "Add Card" : {},
+    "Add a comment…" : {},
+    "Add a new list to this board" : {},
+    "Add card" : {},
+    "Add file…" : {},
+    "Add label" : {},
+    "Add labels to sort and filter this board's cards." : {},
+    "Add list" : {},
+    "Added %@ to %@." : {},
+    "Adds a card to the end of a list on one of your boards." : {},
+    "An unofficial client for Nextcloud Deck. Shuffleboard is an independent project and is not affiliated with or endorsed by Nextcloud." : {},
+    "Any due date" : {},
+    "Archive" : {},
+    "Archive Card" : {},
+    "Archive card" : {},
+    "Archived" : {},
+    "Archived Cards" : {},
+    "Archived cards" : {},
+    "Assign" : {},
+    "Assign someone to this card" : {},
+    "Assigned to" : {},
+    "Assigned to %@" : {
+      "comment" : "VoiceOver: who a card is assigned to"
+    },
+    "Assigned to Me" : {},
+    "Assigned to you: %@" : {
+      "comment" : "Notification title"
+    },
+    "At launch" : {},
+    "Attachment %lld" : {},
+    "Attachments" : {},
+    "Blue" : {},
+    "Board" : {},
+    "Board title" : {},
+    "Boards" : {},
+    "Built" : {},
+    "Can edit" : {},
+    "Can manage" : {},
+    "Can share" : {},
+    "Can't reach %@. Check that the server is running, then try again." : {},
+    "Can't reach the server. Editing is off until the connection is back." : {},
+    "Can't reach the server. Showing your boards as of %@. Editing is off until the connection is back." : {
+      "comment" : "The age is relative, e.g. \"5 minutes ago\"."
+    },
+    "Cancel" : {},
+    "Card" : {},
+    "Card title" : {},
+    "Cards you archive on %@ appear here." : {},
+    "Changes made elsewhere" : {},
+    "Changes on the web or in other apps show up at these times; ⌘R refreshes any time." : {},
+    "Check Now" : {},
+    "Check for Updates…" : {},
+    "Check for changes" : {},
+    "Check for updates automatically" : {},
+    "Check when Shuffleboard comes to the front" : {},
+    "Checklist %lld of %lld done" : {},
+    "Choose a board from the sidebar to get started." : {},
+    "Clear" : {},
+    "Clear Filters" : {},
+    "Clear search" : {},
+    "Clear the search" : {},
+    "Close" : {},
+    "Color" : {},
+    "Comment" : {},
+    "Comment actions" : {},
+    "Comments" : {},
+    "Comments can't be shown until the server can be reached." : {},
+    "Commit" : {},
+    "Containing" : {},
+    "Copy Build Info" : {},
+    "Copy cards" : {},
+    "Copying… %lld of %lld" : {},
+    "Could not decode %@" : {
+      "comment" : "The context is English, e.g. \"stacks\""
+    },
+    "Could not decode %@: %@" : {
+      "comment" : "The context and detail are English, e.g. \"stacks\" and \"missing key 'id'\""
+    },
+    "Could not decode attachments response" : {},
+    "Could not decode boards response" : {},
+    "Could not download attachment" : {},
+    "Could not load %lld attachments." : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Could not load %lld attachment."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Could not load %lld attachments."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Could not load boards" : {},
+    "Could not load lists" : {},
+    "Could not save card: %@" : {},
+    "Couldn't find that board. It may have been deleted, or it's no longer shared with you." : {},
+    "Couldn't find that card. It may have been deleted, or its board is no longer shared with you." : {},
+    "Couldn't find that list. It may have been deleted." : {},
+    "Create" : {},
+    "Create new tag…" : {},
+    "Credentials are stored securely in the Keychain.\nShuffleboard is an unofficial client, not affiliated with Nextcloud." : {},
+    "Dates" : {},
+    "Deck API Reference" : {},
+    "Delete" : {},
+    "Delete %@" : {},
+    "Delete Card…" : {},
+    "Delete board?" : {},
+    "Delete card" : {},
+    "Delete card?" : {},
+    "Delete comment?" : {},
+    "Delete label" : {},
+    "Delete label?" : {},
+    "Delete list" : {},
+    "Delete list?" : {},
+    "Delete this list and its cards" : {},
+    "Description" : {},
+    "Dismiss" : {},
+    "Dismiss error" : {},
+    "Done" : {
+      "comment" : "A card's state, and the button that closes a sheet"
+    },
+    "Download" : {},
+    "Download %@" : {},
+    "Download and install updates automatically" : {},
+    "Due" : {},
+    "Due %@" : {
+      "comment" : "VoiceOver: a card's due date"
+    },
+    "Due Before" : {},
+    "Due Date" : {},
+    "Due dates" : {},
+    "Due in the next 7 days" : {},
+    "Due soon: %@" : {
+      "comment" : "Notification title"
+    },
+    "Duplicate" : {},
+    "Duplicate board" : {},
+    "Duplicate…" : {},
+    "Edit" : {},
+    "Edit %@" : {},
+    "Edit Board…" : {},
+    "Edit Card" : {},
+    "Edit board" : {},
+    "Edit label" : {},
+    "Edit this board's labels" : {},
+    "Enter board name" : {},
+    "Enter list name" : {},
+    "Every %lld minutes" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Every minute"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Every %lld minutes"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Every %lld seconds" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Every second"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Every %lld seconds"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Every minute" : {},
+    "Everyone on this board is assigned" : {},
+    "Federated user" : {},
+    "Filter" : {},
+    "Filter Cards" : {},
+    "Filter cards" : {},
+    "Filter cards by label, person or due date" : {},
+    "Find Cards" : {},
+    "Find cards containing ${text}" : {},
+    "Finds the cards on your boards that match. Leaves out archived cards, and done cards unless you include them." : {},
+    "Finish signing in in your browser, then come back here." : {},
+    "General" : {},
+    "Green" : {},
+    "Group" : {},
+    "HTTP %lld" : {
+      "comment" : "An HTTP status code, e.g. HTTP 500"
+    },
+    "Has a due date" : {},
+    "Has a start date" : {},
+    "Hidden" : {},
+    "Hide done cards" : {},
+    "Hide recently deleted boards" : {},
+    "Hide the card from the board; restore it from Archived Cards" : {},
+    "Include Done Cards" : {},
+    "Invalid URL" : {},
+    "Invalid response" : {},
+    "Keychain delete failed: %d" : {},
+    "Keychain save failed: %d" : {},
+    "Label name" : {},
+    "Labels" : {},
+    "List" : {},
+    "List actions" : {},
+    "List name" : {},
+    "List title" : {},
+    "Lists and labels are copied, without cards. Sharing isn't." : {},
+    "Lists, labels and cards are copied, with descriptions, dates and done state. Comments, attachments, assignments, sharing and archived cards aren't." : {},
+    "Loading attachments…" : {},
+    "Loading lists…" : {},
+    "Loading…" : {},
+    "Mark ${card} as done" : {},
+    "Mark Card as Done" : {},
+    "Mark as Done" : {},
+    "Mark as Not Done" : {},
+    "Marked %@ as done." : {},
+    "Marked %@ as not done." : {},
+    "Marks a card as done, or as not done." : {},
+    "Move Down" : {},
+    "Move Up" : {},
+    "Move to Next List" : {},
+    "Move to Previous List" : {},
+    "Name" : {},
+    "Never" : {
+      "comment" : "Checking for changes: never"
+    },
+    "New Board" : {},
+    "New Board…" : {},
+    "New Card" : {},
+    "New Label" : {},
+    "New List…" : {},
+    "New Window" : {},
+    "New assignments" : {},
+    "New board" : {},
+    "New label" : {},
+    "New list" : {},
+    "New tag" : {},
+    "Next Board" : {},
+    "No Archived Cards" : {},
+    "No Labels" : {},
+    "No activity yet" : {},
+    "No attachments" : {},
+    "No boards" : {},
+    "No cards found" : {},
+    "No comments yet" : {},
+    "No description" : {},
+    "No due date" : {},
+    "No matches" : {},
+    "No matching cards" : {},
+    "Not modified" : {},
+    "Notifications" : {},
+    "Only people with manage rights can remove shares" : {},
+    "Only this board's cards." : {},
+    "Open" : {},
+    "Open Board" : {},
+    "Open Card" : {},
+    "Open in New Window" : {},
+    "Opens a board in Shuffleboard." : {},
+    "Opens a card in Shuffleboard." : {},
+    "Opens card details" : {},
+    "Orange" : {},
+    "Overdue" : {},
+    "Overdue, was due %@" : {
+      "comment" : "VoiceOver: a card's due date has passed"
+    },
+    "Overdue: %@" : {
+      "comment" : "Notification title"
+    },
+    "Owner" : {},
+    "People to mention" : {},
+    "People with access" : {},
+    "Permission denied" : {},
+    "Preview" : {},
+    "Preview sheet" : {},
+    "Previous Board" : {},
+    "Purple" : {},
+    "Put the attachment back on the card" : {},
+    "Recently Deleted" : {},
+    "Red" : {},
+    "Ref" : {},
+    "Refresh" : {},
+    "Refresh boards" : {},
+    "Refresh lists" : {},
+    "Refreshing lists" : {},
+    "Remove" : {},
+    "Remove %@" : {},
+    "Remove attachment" : {},
+    "Remove attachment?" : {},
+    "Remove label" : {},
+    "Remove label %@" : {},
+    "Removed" : {},
+    "Rename list" : {},
+    "Rename or recolor" : {},
+    "Rename this board or change its color" : {},
+    "Restore" : {},
+    "Restore %@" : {},
+    "Restore this board" : {},
+    "Save" : {},
+    "Search All Boards" : {},
+    "Search people, groups and teams" : {},
+    "Searching…" : {},
+    "Select a Board" : {},
+    "Server URL" : {},
+    "Share this board" : {},
+    "Share with" : {},
+    "Share with %@" : {},
+    "Shared with %lld" : {},
+    "Sharing" : {},
+    "Show older activity" : {},
+    "Show older comments" : {},
+    "Show recently deleted boards" : {},
+    "Showing %lld of %lld cards. Drag and drop is paused while filtering." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Showing %1$lld of %2$#@cards@. Drag and drop is paused while filtering."
+          },
+          "substitutions" : {
+            "cards" : {
+              "argNum" : 2,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg card"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg cards"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Shown" : {},
+    "Shuffleboard" : {},
+    "Shuffleboard checks your boards while it's open. Due date reminders are scheduled ahead, so they arrive even after you quit. Reminders are for the account you're using." : {},
+    "Sign Out of %@" : {},
+    "Sign in to another account. You can switch between accounts from the account menu." : {},
+    "Sign in with browser" : {},
+    "Sign in with your Nextcloud server to view and manage your Deck boards." : {},
+    "Sign-in timed out. Complete sign-in in the browser and try again." : {},
+    "Signed in as %@" : {},
+    "Signed out of %@: %@" : {},
+    "Start" : {},
+    "Starts %@" : {
+      "comment" : "A card's start date"
+    },
+    "Stop Sharing" : {},
+    "Stop sharing" : {},
+    "Stop sharing with %@" : {},
+    "Stop sharing?" : {},
+    "Tag name" : {},
+    "Team" : {},
+    "That list isn't on the board you chose. Choose one of the board's lists." : {},
+    "The account used last" : {},
+    "The board %@ has no lists to add a card to." : {},
+    "The card's activity can't be shown until the server can be reached." : {},
+    "The comment will be permanently deleted." : {},
+    "The list to add the card to. Without one, it goes in the board's first list." : {},
+    "The server can't be reached, so this card can't be changed until it can." : {},
+    "The server couldn't do that: %@" : {},
+    "The server no longer accepts the sign-in for %@: it may have been revoked. Open Shuffleboard and sign in again." : {},
+    "The start date is after the due date." : {},
+    "They will lose access to this board." : {},
+    "This board's lists haven't been saved on this Mac yet, so they can't be shown until the server can be reached." : {},
+    "This card will be deleted. You can restore it from Deck in your browser until the server clears deleted items (after 5 hours by default)." : {
+      "comment" : "Confirming deleting the card that is open."
+    },
+    "This server has Deck %@, which can't restore deleted boards. Deck 1.17 or later can; your Nextcloud administrator can update it." : {},
+    "Title" : {},
+    "Title of the copy" : {},
+    "Try Again" : {},
+    "Try again" : {},
+    "Unarchive" : {},
+    "Unarchive %@" : {},
+    "Unassign" : {},
+    "Unassign %@" : {},
+    "Unknown" : {
+      "comment" : "A share with no name\nNo version or build number"
+    },
+    "Unknown error" : {},
+    "Updates" : {},
+    "Updates are checked once a day. Automatic installs happen when you quit." : {},
+    "User" : {},
+    "Version %@ (%@)" : {},
+    "When someone assigns a card to you." : {},
+    "Which account to search, if you're signed in to several. Without one, the account you're using." : {},
+    "Words the card's title, description, labels or assignees must have." : {},
+    "Yellow" : {},
+    "You" : {},
+    "You can see who has access. Only people with share rights can change it." : {},
+    "You can't remove your own access here" : {},
+    "You don't have permission to do that on this board." : {},
+    "You're not signed in. Open Shuffleboard and sign in, then try again." : {},
+    "You're offline. Connect to the internet and try again." : {},
+    "You're offline. Editing is off until the connection is back." : {},
+    "You're offline. Showing your boards as of %@. Editing is off until the connection is back." : {
+      "comment" : "The age is relative, e.g. \"5 minutes ago\"."
+    },
+    "Your Nextcloud session has ended — the app password may have been revoked. Please sign in again." : {},
+    "https://your-nextcloud.com" : {},
+    "“%@” and all its cards will be deleted. You can restore it from Deck in your browser until the server clears deleted items (after 5 hours by default)." : {
+      "comment" : "Confirming deleting a list; the list's title is in quotes."
+    },
+    "“%@” and all its lists and cards will be deleted. You can restore it from Recently Deleted in the sidebar until the server clears deleted items (after 5 hours by default)." : {
+      "comment" : "Confirming deleting a board; the board's title is in quotes. Recently Deleted is in the sidebar."
+    },
+    "“%@” will be deleted. You can restore it from Deck in your browser until the server clears deleted items (after 5 hours by default)." : {
+      "comment" : "Confirming deleting a card; the card's title is in quotes."
+    },
+    "“%@” will be removed from this board and from every card that has it. This can't be undone." : {},
+    "“%@” will be removed from this card. This can't be undone, but the file stays in its owner's Files." : {
+      "comment" : "Confirming removing an attachment kept in someone's Files; the file's name is in quotes."
+    },
+    "“%@” will be removed from this card. You can restore it here until the server clears deleted items." : {
+      "comment" : "Confirming removing an attachment Deck keeps; the file's name is in quotes."
+    }
+  },
+  "version" : "1.0"
+}

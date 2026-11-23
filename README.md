@@ -89,6 +89,10 @@ The screenshots are taken by the end-to-end UI tests from demo data (see [End-to
 - **Automatic updates** with [Sparkle](https://sparkle-project.org): Shuffleboard checks for new releases and installs them, or use **Shuffleboard → Check for Updates…**. Every update is verified against the app's EdDSA public key.
 - Built with **SwiftUI** and follows current macOS design (toolbars, sidebar, materials).
 
+## Translations
+
+Shuffleboard is in English, and ready to be translated: all its text is in a String Catalog (`Shuffleboard/Localizable.xcstrings`), counts have plural forms, and dates and numbers follow your Mac's language and region. Translations are welcome as pull requests to the catalog; [CONTRIBUTING.md](CONTRIBUTING.md#translating-shuffleboard) explains how, and how to keep new code translatable.
+
 ## Requirements
 
 - macOS 14.0+
@@ -110,6 +114,7 @@ pre-commit install && pre-commit install --hook-type commit-msg
 | [SwiftLint](https://github.com/realm/SwiftLint) | Style & lint rules | `.swiftlint.yml` |
 | [PMD](https://pmd.github.io) | Static analysis + copy-paste detection | `pmd-ruleset.xml` |
 | [pre-commit](https://pre-commit.com) | Runs all checks before each commit | `.pre-commit-config.yaml` |
+| `scripts/i18n/` | Hard-coded user-facing strings, and the String Catalog against the code ([CONTRIBUTING.md](CONTRIBUTING.md#what-the-checks-catch)) | — |
 
 ### PMD
 
@@ -188,7 +193,7 @@ When you're done, remove the CA again in Keychain Access ("Caddy Local Authority
 
 To sign in, the UI tests pass app passwords to the app in its launch environment. Only Debug builds read them (`UITestLaunch`) and keep them in memory, so UI tests never read or write the Keychain. Release builds always use the Keychain and the browser sign-in.
 
-The **End-to-end tests** workflow runs on every pull request against the newest Nextcloud that Deck supports, on the minimal server. Every day it also runs both profiles against every Nextcloud major that still gets releases, each with its newest Deck, plus the minimal server without the test app or the Activity app on the newest major, and opens an issue if a run fails. A UI test that fails is run again, up to three times in all, because on GitHub's macOS runners a card's sheet now and then starts opening and never shows (#197); one that only passed on another try shows as a warning on the run. Failed runs, and runs with such a test, upload `nextcloud.log` and the test results, which include a screenshot of the screen whenever a test waited in vain for something to appear. Run it by hand (Actions → End-to-end tests → Run workflow) to pick versions and profiles, or tick **screenshots** to retake the README screenshots from the demo data in light and dark mode. That run opens a pull request with the new screenshots in `docs/screenshots/`.
+The **End-to-end tests** workflow runs on every pull request against the newest Nextcloud that Deck supports, on the minimal server. Every day it also runs both profiles against every Nextcloud major that still gets releases, each with its newest Deck, plus the minimal server without the test app or the Activity app on the newest major, and the UI tests in the double-length pseudo-language (see [CONTRIBUTING.md](CONTRIBUTING.md#the-pseudo-language)), and opens an issue if a run fails. A UI test that fails is run again, up to three times in all, because on GitHub's macOS runners a card's sheet now and then starts opening and never shows (#197); one that only passed on another try shows as a warning on the run. Failed runs, and runs with such a test, upload `nextcloud.log` and the test results, which include a screenshot of the screen whenever a test waited in vain for something to appear. Run it by hand (Actions → End-to-end tests → Run workflow) to pick versions and profiles, or tick **screenshots** to retake the README screenshots from the demo data in light and dark mode. That run opens a pull request with the new screenshots in `docs/screenshots/`.
 
 ### Building a signed DMG for distribution
 

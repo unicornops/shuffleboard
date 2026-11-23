@@ -60,6 +60,7 @@ struct BoardDetailView: View {
                 }
             }
         }
+        // i18n-ignore: the name of the Nextcloud app
         .navigationTitle(window.selectedBoard?.title ?? "Deck")
         .searchable(text: $window.cardFilter.text, placement: .toolbar, prompt: "Filter cards")
         .searchFocusedIfAvailable($isFilterFocused)
@@ -131,7 +132,7 @@ struct BoardDetailView: View {
             }
         } message: {
             if let card = window.cardPendingDelete {
-                Text(DeleteConfirmation.message("\u{201c}\(card.title)\u{201d}"))
+                Text(DeleteConfirmation.card(card.title))
             }
         }
         // The single place lists are loaded on board selection; changing board cancels the previous load.

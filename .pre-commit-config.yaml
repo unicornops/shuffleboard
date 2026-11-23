@@ -57,6 +57,25 @@ repos:
         pass_filenames: false
 
   # ---------------------------------------------------------------------------
+  # Translation (#162): hard-coded user-facing strings, and the String Catalog
+  # on its own. See CONTRIBUTING.md.
+  # ---------------------------------------------------------------------------
+  - repo: local
+    hooks:
+      - id: hardcoded-strings
+        name: Hard-coded user-facing strings
+        language: system
+        entry: python3 scripts/i18n/hardcoded-strings.py
+        files: ^Shuffleboard/.*\.swift$
+        pass_filenames: true
+      - id: string-catalog
+        name: String Catalog
+        language: system
+        entry: python3 scripts/i18n/catalog.py lint
+        files: \.xcstrings$
+        pass_filenames: false
+
+  # ---------------------------------------------------------------------------
   # PMD CPD (copy-paste detection) for Swift
   # (pmd must be installed: brew install pmd)
   #

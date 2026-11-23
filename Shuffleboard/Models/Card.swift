@@ -118,7 +118,7 @@ struct Attachment: Codable, Identifiable {
 
     /// Display name for the attachment (filename).
     var displayName: String {
-        extendedData?.info?.basename ?? extendedData?.info?.filename ?? data ?? "Attachment \(id)"
+        extendedData?.info?.basename ?? extendedData?.info?.filename ?? data ?? String(localized: "Attachment \(id)")
     }
 
     /// Deleted but still listed: Deck keeps deleted `deck_file` attachments until it cleans up.

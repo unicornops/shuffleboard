@@ -97,6 +97,14 @@ jobs:
       - name: SwiftLint
         run: swiftlint lint --strict --config .swiftlint.yml --reporter github-actions-logging
 
+      # Translation (#162): user-facing text the String Catalog can't reach, and the catalog's own consistency.
+      # Whether the catalog has every key the code uses is checked after the build, below.
+      - name: Hard-coded user-facing strings
+        run: python3 scripts/i18n/hardcoded-strings.py
+
+      - name: String Catalog
+        run: python3 scripts/i18n/catalog.py lint
+
   build:
     name: Build and Test
     runs-on: macos-latest
@@ -147,6 +155,7 @@ jobs:
           echo "✓ All Swift files have valid syntax"
 
       - name: Build (Debug)
+        id: debug-build
         run: |
           xcodebuild \
             -project Shuffleboard.xcodeproj \
@@ -180,6 +189,27 @@ jobs:
         with:
           name: unit-test-results
           path: build/UnitTests.xcresult
+          if-no-files-found: ignore
+
+      # The Debug build left the strings the compiler found in the code (SWIFT_EMIT_LOC_STRINGS) in build/DerivedData.
+      # xcodebuild doesn't add them to the String Catalog, as building in Xcode does, so a key missing from it would
+      # never be translated (#162). Runs even if a unit test failed.
+      - name: Check the String Catalog against the code
+        id: catalog
+        if: ${{ !cancelled() && steps.debug-build.outcome == 'success' }}
+        run: python3 scripts/i18n/catalog.py check build/DerivedData
+
+      - name: Update the String Catalog
+        id: catalog-update
+        if: ${{ !cancelled() && steps.catalog.outcome == 'failure' }}
+        run: python3 scripts/i18n/catalog.py check build/DerivedData --write
+
+      - name: Upload the updated String Catalog
+        if: ${{ !cancelled() && steps.catalog-update.outcome == 'success' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: string-catalogs
+          path: Shuffleboard/*.xcstrings
           if-no-files-found: ignore
 
       - name: Build (Release - Unsigned)
@@ -234,6 +264,7 @@ jobs:
           echo "- **Swift Syntax**: Validated" >> $GITHUB_STEP_SUMMARY
           echo "- **Build (Debug)**: Successful" >> $GITHUB_STEP_SUMMARY
           echo "- **Unit tests**: Passed" >> $GITHUB_STEP_SUMMARY
+          echo "- **String Catalog**: Has every key the code uses" >> $GITHUB_STEP_SUMMARY
           echo "- **Build (Release)**: Successful" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Build Environment" >> $GITHUB_STEP_SUMMARY

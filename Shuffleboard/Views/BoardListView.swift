@@ -90,12 +90,7 @@ struct BoardListView: View {
             } message: {
                 if let boardId = pendingBoardDelete,
                    let board = appState.boards.first(where: { $0.id == boardId }) {
-                    Text(
-                        DeleteConfirmation.message(
-                            "\u{201c}\(board.title)\u{201d} and all its lists and cards",
-                            restoreNote: DeleteConfirmation.boardRestoreNote
-                        )
-                    )
+                    Text(DeleteConfirmation.board(board.title))
                 }
             }
     }

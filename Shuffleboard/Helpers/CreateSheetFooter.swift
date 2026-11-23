@@ -39,7 +39,7 @@ struct CreateSheetFooter: View {
     @Binding var isSaving: Bool
 
     /// The confirming button's title: "Create", or e.g. "Save" when editing.
-    var actionTitle = "Create"
+    var actionTitle: LocalizedStringKey = "Create"
 
     /// Called when the user taps Create or presses ⌘Return.
     var onSave: () -> Void
