@@ -37,6 +37,8 @@ struct LoginView: View {
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
+                // All of it, on as many lines as it takes: a longer translation was cut off after one line (#162).
+                .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: 320)
 
                 VStack(alignment: .leading, spacing: 8) {

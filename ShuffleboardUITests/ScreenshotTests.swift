@@ -59,7 +59,9 @@ final class ScreenshotTests: XCTestCase {
     /// In the pseudo-language (#162), Settings and About too, to look for text that is cut off.
     private func captureWindowsNotInTheREADME(_ app: XCUIApplication, _ appearance: String) async throws {
         app.typeKey(",", modifierFlags: .command)
-        app.element("refresh when activated").waitToAppear("Settings did not open")
+        // Settings opens on the tab it was last on.
+        app.toolbars.buttons.withText("General").firstMatch.waitToAppear("Settings did not open").click()
+        app.element("refresh when activated").waitToAppear("No General settings")
         try await Task.sleep(nanoseconds: 500_000_000)
         keepScreen("settings-general-\(appearance)")
         app.toolbars.buttons.withText("Notifications").firstMatch.click()
@@ -68,6 +70,8 @@ final class ScreenshotTests: XCTestCase {
         app.toolbars.buttons.withText("Updates").firstMatch.click()
         try await Task.sleep(nanoseconds: 500_000_000)
         keepScreen("settings-updates-\(appearance)")
+        // Leave Settings on its first tab, where the other tests expect it.
+        app.toolbars.buttons.withText("General").firstMatch.click()
         app.typeKey("w", modifierFlags: .command)
 
         app.menuBars.menuBarItems["Shuffleboard"].click()

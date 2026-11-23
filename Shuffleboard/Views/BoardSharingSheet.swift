@@ -203,17 +203,27 @@ struct BoardSharingSheet: View {
                 .help(removeHelp(board: board, isMe: isMe))
                 .accessibilityLabel(stopSharingLabel(entry))
             }
-            HStack(spacing: 16) {
-                ForEach(SharePermissions.Right.allCases, id: \.self) { right in
-                    Toggle(right.title, isOn: permissionBinding(right, for: entry, on: board))
-                        .toggleStyle(.checkbox)
-                        .disabled(!board.canGrant(right))
+            // In a row, or one under another when a translation is too long for that (#162).
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 16) {
+                    permissionToggles(entry, on: board)
+                }
+                VStack(alignment: .leading, spacing: 4) {
+                    permissionToggles(entry, on: board)
                 }
             }
             .padding(.leading, 30)
             .font(.callout)
         }
         .padding(.vertical, 2)
+    }
+
+    private func permissionToggles(_ entry: ACLEntry, on board: Board) -> some View {
+        ForEach(SharePermissions.Right.allCases, id: \.self) { right in
+            Toggle(right.title, isOn: permissionBinding(right, for: entry, on: board))
+                .toggleStyle(.checkbox)
+                .disabled(!board.canGrant(right))
+        }
     }
 
     private func permissionBinding(
