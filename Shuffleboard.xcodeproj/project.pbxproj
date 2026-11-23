@@ -93,6 +93,7 @@
 		A10000000000000000000069 /* ShortcutEntities.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000069 /* ShortcutEntities.swift */; };
 		A1000000000000000000006A /* ShortcutIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000006A /* ShortcutIntents.swift */; };
 		A1000000000000000000006B /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000006B /* Localizable.xcstrings */; };
+		A1000000000000000000006C /* AppShortcuts.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000006C /* AppShortcuts.xcstrings */; };
 		B10000000000000000000064 /* ShortcutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000064 /* ShortcutTests.swift */; };
 		B10000000000000000000065 /* ServerShortcutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000065 /* ServerShortcutTests.swift */; };
 		B10000000000000000000066 /* LocalizationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000066 /* LocalizationTests.swift */; };
@@ -206,6 +207,7 @@
 		A20000000000000000000069 /* ShortcutEntities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutEntities.swift; sourceTree = "<group>"; };
 		A2000000000000000000006A /* ShortcutIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutIntents.swift; sourceTree = "<group>"; };
 		A2000000000000000000006B /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
+		A2000000000000000000006C /* AppShortcuts.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = AppShortcuts.xcstrings; sourceTree = "<group>"; };
 		B20000000000000000000064 /* ShortcutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutTests.swift; sourceTree = "<group>"; };
 		B20000000000000000000065 /* ServerShortcutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerShortcutTests.swift; sourceTree = "<group>"; };
 		B20000000000000000000066 /* LocalizationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalizationTests.swift; sourceTree = "<group>"; };
@@ -263,6 +265,7 @@
 				A40000000000000000000008 /* Shortcuts */,
 				A20000000000000000000020 /* Assets.xcassets */,
 				A2000000000000000000006B /* Localizable.xcstrings */,
+				A2000000000000000000006C /* AppShortcuts.xcstrings */,
 				A20000000000000000000021 /* Shuffleboard.entitlements */,
 				C40000000000000000000003 /* Info.plist */,
 			);
@@ -516,6 +519,7 @@
 			files = (
 				A10000000000000000000020 /* Assets.xcassets in Resources */,
 				A1000000000000000000006B /* Localizable.xcstrings in Resources */,
+				A1000000000000000000006C /* AppShortcuts.xcstrings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

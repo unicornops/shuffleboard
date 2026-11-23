@@ -1,0 +1,9 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "Add a card in ${applicationName}" : {},
+    "Find cards in ${applicationName}" : {},
+    "Open a board in ${applicationName}" : {}
+  },
+  "version" : "1.0"
+}

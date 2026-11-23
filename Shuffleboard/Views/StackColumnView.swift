@@ -594,7 +594,7 @@ struct CardRowView: View {
     private var accessibilityDescription: String {
         var parts = [card.title]
         if card.isDone {
-            parts.append(String(localized: "Done", comment: "VoiceOver: the card is done"))
+            parts.append(String(localized: "Done", comment: "A card's state, and the button that closes a sheet"))
         }
         if let startDate = card.startDate {
             let start = startDate.formatted(.dateTime.month(.wide).day())
