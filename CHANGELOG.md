@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.26.0](https://github.com/unicornops/shuffleboard/compare/v0.25.0...v0.26.0) (2026-11-23)
+
+
+### Features
+
+* **shortcuts:** App Intents for the Shortcuts app ([#199](https://github.com/unicornops/shuffleboard/issues/199)) ([3f80fdc](https://github.com/unicornops/shuffleboard/commit/3f80fdc3bd2f7fd472248334af0371774fcfb20f))
+
 ## [0.25.0](https://github.com/unicornops/shuffleboard/compare/v0.24.0...v0.25.0) (2026-10-16)
 
 
