@@ -156,19 +156,36 @@ final class BoardWindow: ObservableObject {
         }
     }
 
-    /// Opens a card from a clicked notification (#157): switches to its account if need be, then opens its board
-    /// and the card. Does nothing if the account has signed out or the card has gone.
+    /// Opens a card from a clicked notification (#157) or a shortcut (#161): switches to its account if need be, then
+    /// opens its board and the card. Does nothing if the account has signed out or the card has gone.
     func openCard(id cardId: Int, boardId: Int, accountId: Account.ID) async {
-        if app.activeAccount?.id != accountId, let account = app.accounts.first(where: { $0.id == accountId }) {
-            await app.switchAccount(to: account)
-        }
-        guard app.activeAccount?.id == accountId, app.boards.contains(where: { $0.id == boardId }) else { return }
+        guard await prepareToOpen(boardId: boardId, accountId: accountId) else { return }
         selectedBoardId = boardId
         await app.loadStacks(boardId: boardId)
         guard selectedBoardId == boardId,
               let card = stacks.lazy.flatMap(\.activeCards).first(where: { $0.id == cardId }) else { return }
         selectedCardId = card.id
         openedCard = card
+    }
+
+    /// Opens a board from a shortcut (#161), switching to its account if need be. Does nothing if the account has
+    /// signed out or the board has gone.
+    func openBoard(id boardId: Int, accountId: Account.ID) async {
+        guard await prepareToOpen(boardId: boardId, accountId: accountId) else { return }
+        selectedBoardId = boardId
+    }
+
+    /// Switches to `accountId` if it isn't the account in use, and loads its boards if `boardId` isn't among them yet
+    /// (a board made since they loaded, or the app only just started). Returns whether the board can be opened.
+    private func prepareToOpen(boardId: Int, accountId: Account.ID) async -> Bool {
+        if app.activeAccount?.id != accountId, let account = app.accounts.first(where: { $0.id == accountId }) {
+            await app.switchAccount(to: account)
+        }
+        guard app.activeAccount?.id == accountId else { return false }
+        if !app.canOpen(boardId) {
+            await app.loadBoards()
+        }
+        return app.canOpen(boardId)
     }
 }
 

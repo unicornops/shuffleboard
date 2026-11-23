@@ -8,7 +8,8 @@ import Combine
 /// - looking for changes every so often and when the app comes to the front, as set in Settings (#165);
 /// - trying the server again every 15 seconds while it can't be reached, so editing comes back on by itself (#156);
 /// - saving the copy on the Mac at quit;
-/// - opening the card of a clicked notification (#157) in the window in front, or the next window to open.
+/// - opening the card of a clicked notification (#157), or the board or card a shortcut asks for (#161), in the window
+///   in front, or the next window to open.
 @MainActor
 final class BackgroundWork {
     private let appState: AppState
@@ -18,8 +19,8 @@ final class BackgroundWork {
     /// The background refresh interval `refreshTask` was started with; nil for never.
     private var refreshInterval: TimeInterval?
     private var reconnectTask: Task<Void, Never>?
-    /// A clicked notification waiting for a window to open its card in.
-    private var pendingClick: ClickedReminder?
+    /// A clicked notification's card, or a shortcut's board or card, waiting for a window to open it in.
+    private var pendingDestination: WindowDestination?
 
     /// How long to wait between tries while the server can't be reached.
     private static let reconnectInterval: Duration = .seconds(15)
@@ -77,17 +78,27 @@ final class BackgroundWork {
             .sink { [weak self] clicked in
                 MainActor.assumeIsolated {
                     CardReminderClicks.shared.clicked = nil
-                    self?.open(clicked)
+                    self?.open(.card(accountId: clicked.accountId, boardId: clicked.boardId, cardId: clicked.cardId))
+                }
+            }
+            .store(in: &subscriptions)
+        ShortcutRequests.shared.$destination
+            .compactMap { $0 }
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] destination in
+                MainActor.assumeIsolated {
+                    ShortcutRequests.shared.destination = nil
+                    self?.open(destination)
                 }
             }
             .store(in: &subscriptions)
     }
 
-    /// A window opened: it opens the card of a notification clicked while no window was open.
+    /// A window opened: it opens what a notification or shortcut asked for while no window was open.
     func windowOpened(_ window: BoardWindow) {
-        guard let clicked = pendingClick else { return }
-        pendingClick = nil
-        open(clicked, in: window)
+        guard let destination = pendingDestination else { return }
+        pendingDestination = nil
+        open(destination, in: window)
     }
 
     private func signedIn() {
@@ -124,18 +135,24 @@ final class BackgroundWork {
         }
     }
 
-    /// Opens a clicked notification's card in the window in front, or in the next window to open.
-    private func open(_ clicked: ClickedReminder) {
+    /// Opens a board or card in the window in front, or in the next window to open.
+    private func open(_ destination: WindowDestination) {
         guard let window = commandState.window else {
-            pendingClick = clicked
+            pendingDestination = destination
             return
         }
-        open(clicked, in: window)
+        open(destination, in: window)
     }
 
-    private func open(_ clicked: ClickedReminder, in window: BoardWindow) {
+    private func open(_ destination: WindowDestination, in window: BoardWindow) {
         Task {
-            await window.openCard(id: clicked.cardId, boardId: clicked.boardId, accountId: clicked.accountId)
+            switch destination {
+            case let .board(accountId, boardId):
+                await window.openBoard(id: boardId, accountId: accountId)
+
+            case let .card(accountId, boardId, cardId):
+                await window.openCard(id: cardId, boardId: boardId, accountId: accountId)
+            }
         }
     }
 }

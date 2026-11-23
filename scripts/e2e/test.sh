@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Runs the end-to-end tests against the server from start-server.sh (macOS, Xcode).
 #
-#   scripts/e2e/test.sh api          DeckAPI and AppState against the server (ShuffleboardTests/Server*)
+#   scripts/e2e/test.sh api          DeckAPI, AppState and the Shortcuts actions against the server (ShuffleboardTests/Server*)
 #   scripts/e2e/test.sh ui           the UI tests (ShuffleboardUITests), needs seed.sh's demo data
 #   scripts/e2e/test.sh screenshots  only the README screenshots, then saves them to docs/screenshots
 #
@@ -25,7 +25,7 @@ done <"$E2E_DIR/env"
 # card's sheet starts opening and never shows. A test that only passed on another try is reported as a warning.
 retries=()
 case "$KIND" in
-    api) scheme=Shuffleboard filters=(-only-testing:ShuffleboardTests/ServerDeckAPITests -only-testing:ShuffleboardTests/ServerAppStateTests) ;;
+    api) scheme=Shuffleboard filters=(-only-testing:ShuffleboardTests/ServerDeckAPITests -only-testing:ShuffleboardTests/ServerAppStateTests -only-testing:ShuffleboardTests/ServerShortcutTests) ;;
     ui)
         scheme=ShuffleboardUITests filters=(-skip-testing:ShuffleboardUITests/ScreenshotTests)
         retries=(-retry-tests-on-failure -test-iterations 3)

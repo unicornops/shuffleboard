@@ -28,4 +28,10 @@ extension AppState {
         await refreshIfChanged()
         await updateReminders()
     }
+
+    /// A shortcut changed a board of `accountId` (#161): shows the change straight away if that's the account in use.
+    func shortcutChangedBoard(accountId: Account.ID) async {
+        guard activeAccount?.id == accountId else { return }
+        await refreshIfChanged()
+    }
 }

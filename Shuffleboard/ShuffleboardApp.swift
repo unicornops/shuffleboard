@@ -16,6 +16,8 @@ struct ShuffleboardApp: App {
         self.commandState = commandState
         // Before the app finishes launching, so a click on a notification that launches it isn't missed.
         CardReminderClicks.shared.start()
+        // Shortcuts actions (#161) use the same accounts, and tell the app about their changes.
+        ShortcutsEnvironment.current = .forApp(appState)
         self.backgroundWork = BackgroundWork(appState: appState, commandState: commandState)
     }
 

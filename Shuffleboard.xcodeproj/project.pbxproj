@@ -88,6 +88,12 @@
 		D10000000000000000000001 /* UITestSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = D20000000000000000000001 /* UITestSupport.swift */; };
 		D10000000000000000000002 /* MainFlowUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D20000000000000000000002 /* MainFlowUITests.swift */; };
 		D10000000000000000000003 /* ScreenshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D20000000000000000000003 /* ScreenshotTests.swift */; };
+		A10000000000000000000067 /* ShortcutsEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000067 /* ShortcutsEnvironment.swift */; };
+		A10000000000000000000068 /* ShortcutActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000068 /* ShortcutActions.swift */; };
+		A10000000000000000000069 /* ShortcutEntities.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000069 /* ShortcutEntities.swift */; };
+		A1000000000000000000006A /* ShortcutIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000006A /* ShortcutIntents.swift */; };
+		B10000000000000000000064 /* ShortcutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000064 /* ShortcutTests.swift */; };
+		B10000000000000000000065 /* ServerShortcutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000065 /* ServerShortcutTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -193,6 +199,12 @@
 		D20000000000000000000001 /* UITestSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UITestSupport.swift; sourceTree = "<group>"; };
 		D20000000000000000000002 /* MainFlowUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainFlowUITests.swift; sourceTree = "<group>"; };
 		D20000000000000000000003 /* ScreenshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenshotTests.swift; sourceTree = "<group>"; };
+		A20000000000000000000067 /* ShortcutsEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutsEnvironment.swift; sourceTree = "<group>"; };
+		A20000000000000000000068 /* ShortcutActions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutActions.swift; sourceTree = "<group>"; };
+		A20000000000000000000069 /* ShortcutEntities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutEntities.swift; sourceTree = "<group>"; };
+		A2000000000000000000006A /* ShortcutIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutIntents.swift; sourceTree = "<group>"; };
+		B20000000000000000000064 /* ShortcutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutTests.swift; sourceTree = "<group>"; };
+		B20000000000000000000065 /* ServerShortcutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerShortcutTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -244,6 +256,7 @@
 				A40000000000000000000005 /* Services */,
 				A40000000000000000000006 /* Views */,
 				A40000000000000000000007 /* Helpers */,
+				A40000000000000000000008 /* Shortcuts */,
 				A20000000000000000000020 /* Assets.xcassets */,
 				A20000000000000000000021 /* Shuffleboard.entitlements */,
 				C40000000000000000000003 /* Info.plist */,
@@ -339,6 +352,17 @@
 			path = Helpers;
 			sourceTree = "<group>";
 		};
+		A40000000000000000000008 /* Shortcuts */ = {
+			isa = PBXGroup;
+			children = (
+				A20000000000000000000067 /* ShortcutsEnvironment.swift */,
+				A20000000000000000000068 /* ShortcutActions.swift */,
+				A20000000000000000000069 /* ShortcutEntities.swift */,
+				A2000000000000000000006A /* ShortcutIntents.swift */,
+			);
+			path = Shortcuts;
+			sourceTree = "<group>";
+		};
 		B40000000000000000000001 /* ShuffleboardTests */ = {
 			isa = PBXGroup;
 			children = (
@@ -362,6 +386,8 @@
 				B2000000000000000000000A /* ServerTestSupport.swift */,
 				B2000000000000000000000B /* ServerDeckAPITests.swift */,
 				B2000000000000000000000C /* ServerAppStateTests.swift */,
+				B20000000000000000000064 /* ShortcutTests.swift */,
+				B20000000000000000000065 /* ServerShortcutTests.swift */,
 			);
 			path = ShuffleboardTests;
 			sourceTree = "<group>";
@@ -585,6 +611,10 @@
 				A10000000000000000000041 /* DroppedText.swift in Sources */,
 				A10000000000000000000042 /* UITestLaunch.swift in Sources */,
 				C10000000000000000000002 /* SoftwareUpdater.swift in Sources */,
+				A10000000000000000000067 /* ShortcutsEnvironment.swift in Sources */,
+				A10000000000000000000068 /* ShortcutActions.swift in Sources */,
+				A10000000000000000000069 /* ShortcutEntities.swift in Sources */,
+				A1000000000000000000006A /* ShortcutIntents.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -612,6 +642,8 @@
 				B1000000000000000000000A /* ServerTestSupport.swift in Sources */,
 				B1000000000000000000000B /* ServerDeckAPITests.swift in Sources */,
 				B1000000000000000000000C /* ServerAppStateTests.swift in Sources */,
+				B10000000000000000000064 /* ShortcutTests.swift in Sources */,
+				B10000000000000000000065 /* ServerShortcutTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
