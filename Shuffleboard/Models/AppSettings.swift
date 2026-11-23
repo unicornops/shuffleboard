@@ -35,16 +35,16 @@ enum AppSettings {
     static func refreshIntervalTitle(_ seconds: Int) -> String {
         switch seconds {
         case 0:
-            "Never"
+            String(localized: "Never", comment: "Checking for changes: never")
 
         case ..<60:
-            "Every \(seconds) seconds"
+            String(localized: "Every \(seconds) seconds")
 
         case 60:
-            "Every minute"
+            String(localized: "Every minute")
 
         default:
-            "Every \(seconds / 60) minutes"
+            String(localized: "Every \(seconds / 60) minutes")
         }
     }
 }

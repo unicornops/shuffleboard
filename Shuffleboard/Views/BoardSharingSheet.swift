@@ -61,7 +61,11 @@ struct BoardSharingSheet: View {
                 pendingRemoval = nil
             }
         } message: {
-            Text("\(pendingRemoval?.participant?.displayName ?? "They") will lose access to this board.")
+            if let name = pendingRemoval?.participant?.displayName {
+                Text("\(name) will lose access to this board.")
+            } else {
+                Text("They will lose access to this board.")
+            }
         }
     }
 
@@ -176,7 +180,7 @@ struct BoardSharingSheet: View {
                     Image(systemName: type?.symbol ?? "person")
                         .frame(width: 22)
                 }
-                Text(entry.participant?.displayName ?? "Unknown")
+                Text(entry.participant?.displayName ?? String(localized: "Unknown", comment: "A share with no name"))
                 if let type, type != .user {
                     Text(type.title)
                         .font(.caption)
@@ -197,7 +201,7 @@ struct BoardSharingSheet: View {
                 .buttonStyle(.plain)
                 .disabled(!board.canManage || isMe)
                 .help(removeHelp(board: board, isMe: isMe))
-                .accessibilityLabel("Stop sharing with \(entry.participant?.displayName ?? "them")")
+                .accessibilityLabel(stopSharingLabel(entry))
             }
             HStack(spacing: 16) {
                 ForEach(SharePermissions.Right.allCases, id: \.self) { right in
@@ -230,8 +234,15 @@ struct BoardSharingSheet: View {
 
     private func removeHelp(board: Board, isMe: Bool) -> String {
         if isMe {
-            return "You can't remove your own access here"
+            return String(localized: "You can't remove your own access here")
         }
-        return board.canManage ? "Stop sharing" : "Only people with manage rights can remove shares"
+        return board.canManage
+            ? String(localized: "Stop sharing")
+            : String(localized: "Only people with manage rights can remove shares")
+    }
+
+    private func stopSharingLabel(_ entry: ACLEntry) -> String {
+        guard let name = entry.participant?.displayName else { return String(localized: "Stop sharing") }
+        return String(localized: "Stop sharing with \(name)")
     }
 }

@@ -129,7 +129,7 @@ struct CardCommentsView: View {
 
     private func editor(for comment: CardComment) -> some View {
         VStack(alignment: .trailing, spacing: 6) {
-            MentionField(placeholder: "Comment", text: $editDraft, people: mentionable)
+            MentionField(placeholder: "Comment", text: $editDraft, people: mentionable, identifier: "edit comment")
             HStack {
                 characterCount(editDraft)
                 Spacer()
@@ -245,11 +245,11 @@ struct CardCommentsView: View {
 /// A comment field that, after an "@", suggests people to mention (#163): click one, or pick it with the arrow keys
 /// and Return or Tab, to write their mention.
 private struct MentionField: View {
-    let placeholder: String
+    let placeholder: LocalizedStringKey
     @Binding var text: String
     let people: [DeckUser]
-    /// The text field's accessibility identifier; the placeholder if nil.
-    var identifier: String?
+    /// The text field's accessibility identifier (not translated, unlike the placeholder).
+    let identifier: String
     @State private var highlighted = 0
 
     private var suggestions: [DeckUser] {
@@ -263,7 +263,7 @@ private struct MentionField: View {
             TextField(placeholder, text: $text, axis: .vertical)
                 .lineLimit(1 ... 6)
                 .textFieldStyle(.roundedBorder)
-                .accessibilityIdentifier(identifier ?? placeholder)
+                .accessibilityIdentifier(identifier)
                 .onKeyPress(.downArrow) { move(1, in: suggestions) }
                 .onKeyPress(.upArrow) { move(-1, in: suggestions) }
                 .onKeyPress(.return) { pick(from: suggestions) }

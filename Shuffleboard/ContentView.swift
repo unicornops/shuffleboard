@@ -87,10 +87,15 @@ struct ContentView: View {
                 } label: {
                     Image(systemName: "person.circle")
                 }
-                .help(appState.activeAccount.map { "Signed in as \($0.id)" } ?? "Account and actions")
+                .help(accountHelp)
                 .accessibilityLabel("Account menu")
             }
         }
+    }
+
+    private var accountHelp: String {
+        guard let account = appState.activeAccount else { return String(localized: "Account and actions") }
+        return String(localized: "Signed in as \(account.id)")
     }
 }
 
@@ -139,13 +144,14 @@ private enum BuildMetadata {
         return info.compactMapValues { $0 as? String }
     }()
 
+    // i18n-ignore: the app's name
     static let appName = Bundle.main.object(forInfoDictionaryKey: "CFBundleName") as? String ?? "Shuffleboard"
     static let version = buildInfo["BuildVersion"]
         ?? Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
-        ?? "Unknown"
+        ?? String(localized: "Unknown", comment: "No version or build number")
     static let buildNumber = buildInfo["BuildNumber"]
         ?? Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String
-        ?? "Unknown"
+        ?? String(localized: "Unknown", comment: "No version or build number")
     static let gitCommit = buildInfo["BuildGitCommit"]
         ?? Bundle.main.object(forInfoDictionaryKey: "BuildGitCommit") as? String
         ?? "unknown"
@@ -157,8 +163,12 @@ private enum BuildMetadata {
         ?? "unknown"
 
     /// Nextcloud's trademark guidelines ask third-party clients to say they are not the official client.
-    static let unofficialNotice = "An unofficial client for Nextcloud Deck. "
-        + "Shuffleboard is an independent project and is not affiliated with or endorsed by Nextcloud."
+    static var unofficialNotice: String {
+        String(localized: """
+        An unofficial client for Nextcloud Deck. Shuffleboard is an independent project and is not affiliated with \
+        or endorsed by Nextcloud.
+        """)
+    }
 
     static var shortCommit: String {
         gitCommit == "unknown" ? gitCommit : String(gitCommit.prefix(7))
@@ -247,7 +257,7 @@ struct AboutSheet: View {
         .frame(width: 420)
     }
 
-    private func metadataLabel(_ title: String) -> some View {
+    private func metadataLabel(_ title: LocalizedStringKey) -> some View {
         Text(title)
             .font(.headline)
             .foregroundStyle(.secondary)

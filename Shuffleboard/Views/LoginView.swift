@@ -103,10 +103,10 @@ struct LoginView: View {
 
             Spacer()
 
-            Text(
-                "Credentials are stored securely in the Keychain.\n"
-                    + "Shuffleboard is an unofficial client, not affiliated with Nextcloud."
-            )
+            Text("""
+            Credentials are stored securely in the Keychain.
+            Shuffleboard is an unofficial client, not affiliated with Nextcloud.
+            """)
             .font(.caption2)
             .foregroundStyle(.tertiary)
             .multilineTextAlignment(.center)

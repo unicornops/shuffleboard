@@ -209,7 +209,7 @@ struct BoardCommands: Commands {
         }
     }
 
-    private func moveButton(_ title: String, _ direction: CardDirection, key: KeyEquivalent) -> some View {
+    private func moveButton(_ title: LocalizedStringKey, _ direction: CardDirection, key: KeyEquivalent) -> some View {
         Button(title) {
             Task { await window?.moveSelectedCard(direction) }
         }

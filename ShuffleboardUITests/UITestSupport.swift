@@ -264,6 +264,23 @@ func uniqueTitle(_ prefix: String) -> String {
     "\(prefix) \(UUID().uuidString.prefix(6))"
 }
 
+// MARK: - Pseudo-language
+
+/// The double-length pseudo-language (#162): with `E2E_PSEUDO_LANGUAGE=double`, the app is launched with
+/// `-NSDoubleLocalizedStrings YES`, which shows every translated string twice ("Save" as "Save Save"), as long as a
+/// long translation would be. It finds layouts that cut text off, and text that isn't translated (it isn't doubled).
+enum PseudoLanguage {
+    static var isOn: Bool {
+        ProcessInfo.processInfo.environment["E2E_PSEUDO_LANGUAGE"] == "double"
+    }
+}
+
+/// The app's text `english` as the app shows it: doubled under the pseudo-language. Not for what comes from the
+/// server (board, list, card and people's names), which isn't translated.
+func ui(_ english: String) -> String {
+    PseudoLanguage.isOn ? "\(english) \(english)" : english
+}
+
 // MARK: - Launching the app
 
 /// What a UI test signed the app in with, to check on the server afterwards.
@@ -297,6 +314,9 @@ extension XCUIApplication {
         }
         // One window, as at a first launch: no windows restored from an earlier test (#160).
         launchArguments += ["-ApplePersistenceIgnoreState", "YES"]
+        if PseudoLanguage.isOn {
+            launchArguments += ["-NSDoubleLocalizedStrings", "YES"]
+        }
         launch()
         XCTAssertTrue(windows.firstMatch.waitForExistence(timeout: 20), "The app's window did not open")
         return accounts
@@ -311,15 +331,17 @@ extension XCUIElement {
         descendants(matching: .any).matching(identifier: name).firstMatch
     }
 
-    /// The first element of `type` whose identifier, label, title or placeholder is `name`.
+    /// The first element of `type` whose identifier is `name`, or whose label, title or placeholder is the app's
+    /// text `name` (doubled under the pseudo-language; identifiers are never translated).
     func find(_ type: XCUIElement.ElementType, _ name: String) -> XCUIElement {
-        descendants(matching: type).matching(
+        let text = ui(name)
+        return descendants(matching: type).matching(
             NSPredicate(
                 format: "identifier == %@ OR label == %@ OR title == %@ OR placeholderValue == %@",
                 name,
-                name,
-                name,
-                name
+                text,
+                text,
+                text
             )
         ).firstMatch
     }

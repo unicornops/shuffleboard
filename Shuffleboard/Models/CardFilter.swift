@@ -17,10 +17,10 @@ struct CardFilter: Equatable, Sendable {
 
         var title: String {
             switch self {
-            case .any: "Any due date"
-            case .overdue: "Overdue"
-            case .dueSoon: "Due in the next 7 days"
-            case .noDueDate: "No due date"
+            case .any: String(localized: "Any due date")
+            case .overdue: String(localized: "Overdue")
+            case .dueSoon: String(localized: "Due in the next 7 days")
+            case .noDueDate: String(localized: "No due date")
             }
         }
     }

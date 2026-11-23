@@ -92,8 +92,10 @@
 		A10000000000000000000068 /* ShortcutActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000068 /* ShortcutActions.swift */; };
 		A10000000000000000000069 /* ShortcutEntities.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000069 /* ShortcutEntities.swift */; };
 		A1000000000000000000006A /* ShortcutIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000006A /* ShortcutIntents.swift */; };
+		A1000000000000000000006B /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000006B /* Localizable.xcstrings */; };
 		B10000000000000000000064 /* ShortcutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000064 /* ShortcutTests.swift */; };
 		B10000000000000000000065 /* ServerShortcutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000065 /* ServerShortcutTests.swift */; };
+		B10000000000000000000066 /* LocalizationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000066 /* LocalizationTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -203,8 +205,10 @@
 		A20000000000000000000068 /* ShortcutActions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutActions.swift; sourceTree = "<group>"; };
 		A20000000000000000000069 /* ShortcutEntities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutEntities.swift; sourceTree = "<group>"; };
 		A2000000000000000000006A /* ShortcutIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutIntents.swift; sourceTree = "<group>"; };
+		A2000000000000000000006B /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		B20000000000000000000064 /* ShortcutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutTests.swift; sourceTree = "<group>"; };
 		B20000000000000000000065 /* ServerShortcutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerShortcutTests.swift; sourceTree = "<group>"; };
+		B20000000000000000000066 /* LocalizationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalizationTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -258,6 +262,7 @@
 				A40000000000000000000007 /* Helpers */,
 				A40000000000000000000008 /* Shortcuts */,
 				A20000000000000000000020 /* Assets.xcassets */,
+				A2000000000000000000006B /* Localizable.xcstrings */,
 				A20000000000000000000021 /* Shuffleboard.entitlements */,
 				C40000000000000000000003 /* Info.plist */,
 			);
@@ -388,6 +393,7 @@
 				B2000000000000000000000C /* ServerAppStateTests.swift */,
 				B20000000000000000000064 /* ShortcutTests.swift */,
 				B20000000000000000000065 /* ServerShortcutTests.swift */,
+				B20000000000000000000066 /* LocalizationTests.swift */,
 			);
 			path = ShuffleboardTests;
 			sourceTree = "<group>";
@@ -509,6 +515,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A10000000000000000000020 /* Assets.xcassets in Resources */,
+				A1000000000000000000006B /* Localizable.xcstrings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -644,6 +651,7 @@
 				B1000000000000000000000C /* ServerAppStateTests.swift in Sources */,
 				B10000000000000000000064 /* ShortcutTests.swift in Sources */,
 				B10000000000000000000065 /* ServerShortcutTests.swift in Sources */,
+				B10000000000000000000066 /* LocalizationTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -123,10 +123,10 @@ enum AuthError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .invalidResponse: "Invalid response"
+        case .invalidResponse: String(localized: "Invalid response")
         case let .serverError(msg): msg
-        case let .httpStatus(code): "HTTP \(code)"
-        case .pollTimeout: "Sign-in timed out. Complete sign-in in the browser and try again."
+        case let .httpStatus(code): String(localized: "HTTP \(code)", comment: "An HTTP status code, e.g. HTTP 500")
+        case .pollTimeout: String(localized: "Sign-in timed out. Complete sign-in in the browser and try again.")
         }
     }
 }

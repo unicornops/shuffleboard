@@ -22,10 +22,10 @@ enum ShareType: Int, CaseIterable, Sendable {
 
     var title: String {
         switch self {
-        case .user: "User"
-        case .group: "Group"
-        case .federated: "Federated user"
-        case .team: "Team"
+        case .user: String(localized: "User")
+        case .group: String(localized: "Group")
+        case .federated: String(localized: "Federated user")
+        case .team: String(localized: "Team")
         }
     }
 
@@ -104,9 +104,9 @@ struct SharePermissions: Equatable, Sendable {
 
         var title: String {
             switch self {
-            case .edit: "Can edit"
-            case .share: "Can share"
-            case .manage: "Can manage"
+            case .edit: String(localized: "Can edit")
+            case .share: String(localized: "Can share")
+            case .manage: String(localized: "Can manage")
             }
         }
     }

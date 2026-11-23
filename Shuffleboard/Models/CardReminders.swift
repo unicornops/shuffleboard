@@ -75,8 +75,10 @@ enum CardReminders {
                 accountId: accountId,
                 boardId: item.board.id,
                 cardId: item.card.id,
-                title: "Due soon: \(item.card.title)",
-                body: "\(place(item)) \u{00b7} due \(due.formatted(date: .abbreviated, time: .shortened))",
+                title: String(localized: "Due soon: \(item.card.title)", comment: "Notification title"),
+                body: String(
+                    localized: "\(place(item)) \u{00b7} due \(due.formatted(date: .abbreviated, time: .shortened))"
+                ),
                 date: max(due.addingTimeInterval(-dueSoonLead), min(now, due)),
                 dueDate: due
             )
@@ -85,8 +87,10 @@ enum CardReminders {
                 accountId: accountId,
                 boardId: item.board.id,
                 cardId: item.card.id,
-                title: "Overdue: \(item.card.title)",
-                body: "\(place(item)) \u{00b7} was due \(due.formatted(date: .abbreviated, time: .shortened))",
+                title: String(localized: "Overdue: \(item.card.title)", comment: "Notification title"),
+                body: String(
+                    localized: "\(place(item)) \u{00b7} was due \(due.formatted(date: .abbreviated, time: .shortened))"
+                ),
                 date: due,
                 dueDate: due
             )
@@ -102,7 +106,7 @@ enum CardReminders {
             accountId: accountId,
             boardId: item.board.id,
             cardId: item.card.id,
-            title: "Assigned to you: \(item.card.title)",
+            title: String(localized: "Assigned to you: \(item.card.title)", comment: "Notification title"),
             body: place(item),
             date: now,
             dueDate: nil
@@ -120,12 +124,19 @@ enum CardReminders {
         let title: String
         let body: String
         if overdue.count == 1 {
-            title = "Overdue: \(first.card.title)"
+            title = String(localized: "Overdue: \(first.card.title)", comment: "Notification title")
             body = place(first)
         } else {
-            title = "\(overdue.count) cards are overdue"
-            let named = overdue.prefix(3).map(\.card.title).joined(separator: ", ")
-            body = overdue.count > 3 ? "\(named) and \(overdue.count - 3) more" : named
+            title = String(localized: "\(overdue.count) cards are overdue", comment: "Notification title")
+            // A list without "and" ("A, B, C" in English), in the user's language.
+            let named = overdue.prefix(3).map(\.card.title).formatted(.list(type: .unit))
+            let more = overdue.count - 3
+            body = more > 0
+                ? String(
+                    localized: "\(named) and \(more) more",
+                    comment: "Overdue cards: the first few, and how many more"
+                )
+                : named
         }
         return CardReminder(
             kind: .overdueSummary,
@@ -141,6 +152,6 @@ enum CardReminders {
     }
 
     private static func place(_ item: RemindableCard) -> String {
-        "\(item.board.title) \u{203a} \(item.listTitle)"
+        String(localized: "\(item.board.title) \u{203a} \(item.listTitle)", comment: "A card's board and list")
     }
 }

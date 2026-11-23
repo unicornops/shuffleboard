@@ -83,6 +83,7 @@ Follow Apple’s official guidance so the codebase stays consistent and idiomati
   - Clarity at the point of use; fluent naming; clear argument labels; documentation comments for public API.
 - **SwiftUI and macOS:** Use current SwiftUI patterns, toolbars, sidebar, materials, and system controls. Prefer declarative UI and native macOS look and behavior.
 - **Conventions in this repo:** Match existing patterns (e.g. `// MARK: -` sections, `async/await` for network, `final class` for service types, explicit error handling with `DeckAPIError`).
+- **Translatable text (#162):** All user-facing text goes through `Shuffleboard/Localizable.xcstrings`: literals straight to SwiftUI, `String(localized:)` elsewhere, `LocalizedStringKey` for parameters that take text to show, whole sentences with interpolation (never `+`), plural forms for counts, and `Date.FormatStyle`/`.formatted()` for dates and numbers. Add new keys to the catalog in the same change (CI checks). See [CONTRIBUTING.md](CONTRIBUTING.md#writing-code-that-can-be-translated).
 
 When in doubt, prefer Apple’s Human Interface Guidelines and Swift API Design Guidelines over ad-hoc style.
 
