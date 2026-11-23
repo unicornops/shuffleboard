@@ -128,8 +128,8 @@ enum CardReminders {
             body = place(first)
         } else {
             title = String(localized: "\(overdue.count) cards are overdue", comment: "Notification title")
-            // A list without "and" ("A, B, C" in English), in the user's language.
-            let named = overdue.prefix(3).map(\.card.title).formatted(.list(type: .unit))
+            // A short list without "and" ("A, B, C" in English), in the user's language.
+            let named = overdue.prefix(3).map(\.card.title).formatted(.list(type: .and, width: .narrow))
             let more = overdue.count - 3
             body = more > 0
                 ? String(

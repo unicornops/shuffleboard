@@ -612,7 +612,7 @@ struct CardRowView: View {
             let people = card.assignments.map(\.participant.displayName).formatted(.list(type: .and))
             parts.append(String(localized: "Assigned to \(people)", comment: "VoiceOver: who a card is assigned to"))
         }
-        return parts.formatted(.list(type: .unit))
+        return parts.formatted(.list(type: .and, width: .narrow))
     }
 }
 
