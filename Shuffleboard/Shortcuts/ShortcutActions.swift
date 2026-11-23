@@ -183,7 +183,7 @@ struct ShortcutActions: Sendable {
     /// sidebar lists them, then by list, then by position in the list. Archived cards are left out.
     func findCards(accountId: Account.ID?, matching criteria: CardCriteria) async throws -> [CardEntity] {
         try await withAPI(accountId, notFound: .boardNotFound) { api, account in
-            var boards: [Board] = if let boardId = criteria.boardId {
+            let boards: [Board] = if let boardId = criteria.boardId {
                 try await [api.getBoard(id: boardId)]
             } else {
                 try await Self.shownBoards(api.getBoards())
