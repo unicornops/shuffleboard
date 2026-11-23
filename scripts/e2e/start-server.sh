@@ -73,6 +73,28 @@ echo "$E2E_PROFILE" >"$E2E_DIR/profile"
 
 log() { printf '==> %s\n' "$*"; }
 
+# A missing extension doesn't stop the install (occ manages without APCu) but breaks every web request (#197).
+"$(dirname "$0")/check-php.sh" "$E2E_PROFILE"
+
+# Runs a command up to three times, waiting between tries: GitHub and the app store sometimes time out (#197).
+retry() {
+    local attempt
+    for attempt in 1 2 3; do
+        "$@" && return 0
+        [ "$attempt" = 3 ] || {
+            echo "warning: try $attempt of 3 failed: $*" >&2
+            sleep $((attempt * 15))
+        }
+    done
+    return 1
+}
+
+# Installs and enables an app from the app store. A try that downloaded the app but failed before enabling it leaves
+# the app in place, so install fails from then on: enable it instead.
+install_app() { # app
+    occ app:install "$1" || occ app:enable "$1"
+}
+
 # Random passwords per server, kept for restarts; the server only listens on localhost.
 if [ ! -f "$E2E_DIR/passwords" ]; then
     {
@@ -239,7 +261,7 @@ elif [ -n "$DECK_VERSION" ]; then
     occ app:enable deck
 else
     log "Installing the newest Deck for this server from the app store"
-    occ app:install deck
+    retry install_app deck
 fi
 
 # MARK: - Activity
@@ -263,7 +285,7 @@ if [ "$E2E_PROFILE" = realistic ]; then
             continue
         fi
         log "Installing $app"
-        if ! occ app:install "$app" >"$LOG_DIR/app-$app.log" 2>&1 && ! occ app:enable "$app" >>"$LOG_DIR/app-$app.log" 2>&1; then
+        if ! install_app "$app" >"$LOG_DIR/app-$app.log" 2>&1; then
             echo "warning: couldn't install $app: $(tail -1 "$LOG_DIR/app-$app.log")" >&2
             if [ -n "${GITHUB_ACTIONS:-}" ]; then
                 echo "::warning::$app isn't installed on the realistic server: $(tail -1 "$LOG_DIR/app-$app.log")"
