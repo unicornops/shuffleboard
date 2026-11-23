@@ -58,7 +58,8 @@ jobs:
 
   lint:
     name: SwiftLint and SwiftFormat
-    runs-on: ubuntu-latest
+    # SwiftLint's Linux build links libxml2.so.2, which Ubuntu 26.04 (ubuntu-latest since November 2026) no longer has.
+    runs-on: ubuntu-24.04
     env:
       # Pinned so a new linter release can't start failing every PR; bump deliberately.
       SWIFTLINT_VERSION: 0.65.1
