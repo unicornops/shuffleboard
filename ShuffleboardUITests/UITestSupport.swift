@@ -267,18 +267,34 @@ func uniqueTitle(_ prefix: String) -> String {
 // MARK: - Pseudo-language
 
 /// The double-length pseudo-language (#162): with `E2E_PSEUDO_LANGUAGE=double`, the app is launched with
-/// `-NSDoubleLocalizedStrings YES`, which shows every translated string twice ("Save" as "Save Save"), as long as a
-/// long translation would be. It finds layouts that cut text off, and text that isn't translated (it isn't doubled).
+/// `-NSDoubleLocalizedStrings YES`, which shows every translated string twice, as long as a long translation would
+/// be. It finds layouts that cut text off, and text that isn't translated (it isn't doubled).
+///
+/// A plain string doubles as "Save Save". One with values doubles its format, the first copy without the values'
+/// `%`: "Sign Out of \(id)" shows as "Sign Out of @ Sign Out of alice@localhost". Either way, it ends with a space
+/// and the English text.
 enum PseudoLanguage {
     static var isOn: Bool {
         ProcessInfo.processInfo.environment["E2E_PSEUDO_LANGUAGE"] == "double"
     }
 }
 
-/// The app's text `english` as the app shows it: doubled under the pseudo-language. Not for what comes from the
-/// server (board, list, card and people's names), which isn't translated.
-func ui(_ english: String) -> String {
-    PseudoLanguage.isOn ? "\(english) \(english)" : english
+/// Matches elements that show the app's text `english` (as the app shows it, also in the pseudo-language) in one of
+/// `attributes`. Not for what comes from the server (board, list, card and people's names), which isn't translated.
+func textPredicate(_ english: String, in attributes: [String] = ["label", "title"]) -> NSPredicate {
+    NSCompoundPredicate(orPredicateWithSubpredicates: attributes.map { attribute in
+        PseudoLanguage.isOn
+            ? NSPredicate(format: "%K ENDSWITH %@", attribute, " \(english)")
+            : NSPredicate(format: "%K == %@", attribute, english)
+    })
+}
+
+@MainActor
+extension XCUIElementQuery {
+    /// The elements whose label or title is the app's text `english`; see `textPredicate(_:in:)`.
+    func withText(_ english: String) -> XCUIElementQuery {
+        matching(textPredicate(english))
+    }
 }
 
 // MARK: - Launching the app
@@ -332,17 +348,13 @@ extension XCUIElement {
     }
 
     /// The first element of `type` whose identifier is `name`, or whose label, title or placeholder is the app's
-    /// text `name` (doubled under the pseudo-language; identifiers are never translated).
+    /// text `name` (see `textPredicate(_:in:)`; identifiers are never translated).
     func find(_ type: XCUIElement.ElementType, _ name: String) -> XCUIElement {
-        let text = ui(name)
-        return descendants(matching: type).matching(
-            NSPredicate(
-                format: "identifier == %@ OR label == %@ OR title == %@ OR placeholderValue == %@",
-                name,
-                text,
-                text,
-                text
-            )
+        descendants(matching: type).matching(
+            NSCompoundPredicate(orPredicateWithSubpredicates: [
+                NSPredicate(format: "identifier == %@", name),
+                textPredicate(name, in: ["label", "title", "placeholderValue"]),
+            ])
         ).firstMatch
     }
 

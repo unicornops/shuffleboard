@@ -39,7 +39,8 @@ final class MainFlowUITests: XCTestCase {
 
         // From the sidebar's context menu.
         app.element("board: \(board.title)").rightClick()
-        app.menuItems[ui("Edit Board\u{2026}")].waitToAppear("No Edit Board item in the board's context menu").click()
+        app.menuItems.withText("Edit Board\u{2026}").firstMatch
+            .waitToAppear("No Edit Board item in the board's context menu").click()
         app.find(.textField, "Enter board name").waitToAppear("Edit sheet did not open")
             .replaceText(with: board.title + " renamed")
         app.find(.button, "Purple").click()
@@ -69,13 +70,13 @@ final class MainFlowUITests: XCTestCase {
         app.openBoard(board.title)
 
         app.element("board: \(board.title)").rightClick()
-        app.menuItems[ui("Archive")].waitToAppear("The board's context menu did not open")
+        app.menuItems.withText("Archive").firstMatch.waitToAppear("The board's context menu did not open")
         // Edit > Delete in the menu bar has the same title; the open context menu's item is the hittable one.
-        let delete = app.menuItems.matching(NSPredicate(format: "title == %@", ui("Delete"))).allElementsBoundByIndex
+        let delete = app.menuItems.matching(textPredicate("Delete", in: ["title"])).allElementsBoundByIndex
             .first { $0.isHittable }
         try XCTUnwrap(delete, "No Delete item in the board's context menu").click()
         // The dialog's button, not its Touch Bar copy, which can't be clicked.
-        app.windows.descendants(matching: .button).matching(NSPredicate(format: "label == %@", ui("Delete"))).firstMatch
+        app.windows.descendants(matching: .button).matching(textPredicate("Delete", in: ["label"])).firstMatch
             .waitToAppear("No confirmation before deleting the board").click()
         XCTAssertTrue(
             app.element("board: \(board.title)").waitForNonExistence(timeout: 10),
@@ -111,10 +112,16 @@ final class MainFlowUITests: XCTestCase {
         app.openBoard(board.title)
 
         app.element("board: \(board.title)").rightClick()
-        app.menuItems[ui("Duplicate\u{2026}")].waitToAppear("No Duplicate item in the board's context menu").click()
+        app.menuItems.withText("Duplicate\u{2026}").firstMatch
+            .waitToAppear("No Duplicate item in the board's context menu").click()
         let copyTitle = board.title + " (copy)"
         let field = app.find(.textField, "Enter board name").waitToAppear("Duplicate sheet did not open")
-        XCTAssertEqual(field.value as? String, copyTitle)
+        if PseudoLanguage.isOn {
+            // The suggested title ("%@ (copy)") is translated, so it's doubled too: give the copy the English one.
+            field.replaceText(with: copyTitle)
+        } else {
+            XCTAssertEqual(field.value as? String, copyTitle)
+        }
         app.find(.button, "Duplicate").click()
 
         app.element("board: \(copyTitle)").waitToAppear("Copy not in the sidebar", timeout: 30)
@@ -140,7 +147,7 @@ final class MainFlowUITests: XCTestCase {
             app.list(list).waitToAppear("List \(list) not shown after creating it")
         }
 
-        app.list("To do").buttons[ui("Add card")].click()
+        app.list("To do").buttons.withText("Add card").firstMatch.click()
         // The field takes focus by itself (#140): type straight away, without clicking it.
         app.find(.textField, "Card title").waitToAppear()
         app.typeText("Write UI tests\r")
@@ -169,8 +176,8 @@ final class MainFlowUITests: XCTestCase {
         app.openBoard(board.title)
 
         // From the list's menu.
-        app.list("To do").waitToAppear().descendants(matching: .any)[ui("List actions")].click()
-        app.menuItems[ui("Rename list")].waitToAppear("No Rename list item in the list's menu").click()
+        app.list("To do").waitToAppear().descendants(matching: .any).withText("List actions").firstMatch.click()
+        app.menuItems.withText("Rename list").firstMatch.waitToAppear("No Rename list item in the list's menu").click()
         app.find(.textField, "List name").waitToAppear("No field to rename the list").replaceText(with: "Backlog\r")
         app.list("Backlog").waitToAppear("Renamed list not shown")
         try await eventually("List not renamed on the server") {
@@ -293,9 +300,9 @@ final class MainFlowUITests: XCTestCase {
         let reopened = app.element("refresh when activated").waitToAppear("Settings did not open again")
         XCTAssertNotEqual(reopened.value as? Int, original, "The change was not kept")
 
-        app.toolbars.buttons[ui("Notifications")].click()
+        app.toolbars.buttons.withText("Notifications").firstMatch.click()
         app.element("due date notifications").waitToAppear("No notification settings")
-        app.toolbars.buttons[ui("General")].click()
+        app.toolbars.buttons.withText("General").firstMatch.click()
         app.element("refresh when activated").waitToAppear().click()
         XCTAssertEqual(app.element("refresh when activated").value as? Int, original)
         app.typeKey("w", modifierFlags: .command)
@@ -429,7 +436,8 @@ final class MainFlowUITests: XCTestCase {
         app.list("To do").waitToAppear("The first board's list isn't shown")
 
         app.element("board: \(second.title)").rightClick()
-        app.menuItems[ui("Open in New Window")].waitToAppear("No Open in New Window in the board's context menu")
+        app.menuItems.withText("Open in New Window").firstMatch
+            .waitToAppear("No Open in New Window in the board's context menu")
             .click()
         let secondWindow = app.windows.containing(.any, identifier: "list: Doing").firstMatch
         secondWindow.waitToAppear("The board did not open in a new window")
@@ -552,7 +560,7 @@ final class MainFlowUITests: XCTestCase {
 
         app.find(.button, "Delete UI someday").click()
         // The dialog's button, not its Touch Bar copy, which can't be clicked.
-        app.windows.descendants(matching: .button).matching(NSPredicate(format: "label == %@", ui("Delete"))).firstMatch
+        app.windows.descendants(matching: .button).matching(textPredicate("Delete", in: ["label"])).firstMatch
             .waitToAppear("No confirmation before deleting a label").click()
         try await eventually("Label not deleted on the server") {
             try await !alice.labels(board: board.id).contains("UI someday")
@@ -580,12 +588,12 @@ final class MainFlowUITests: XCTestCase {
         app.card("With a file").waitToAppear().click()
         app.find(.button, "Remove notes.txt").waitToAppear("Attachment not shown on the card").click()
         // The dialog's button, not its Touch Bar copy, which can't be clicked.
-        app.windows.descendants(matching: .button).matching(NSPredicate(format: "label == %@", ui("Remove"))).firstMatch
+        app.windows.descendants(matching: .button).matching(textPredicate("Remove", in: ["label"])).firstMatch
             .waitToAppear("No confirmation before removing an attachment").click()
         try await eventually("Attachment not removed on the server") { try await deletedAt() > 0 }
 
         // A link-style button: not necessarily of type button.
-        app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", ui("Restore notes.txt"))).firstMatch
+        app.descendants(matching: .any).matching(textPredicate("Restore notes.txt", in: ["label"])).firstMatch
             .waitToAppear("Removed attachment can't be restored").click()
         try await eventually("Attachment not restored on the server") { try await deletedAt() == 0 }
         app.find(.button, "Remove notes.txt").waitToAppear("Restored attachment not shown as attached")
@@ -666,10 +674,10 @@ final class MainFlowUITests: XCTestCase {
 
         // Signing out of Bob goes back to Alice; signing out of her too shows the sign-in screen.
         accountMenu().click()
-        app.menuItems[ui("Sign Out of \(server.accountId(UITestServer.bob))")].waitToAppear().click()
+        app.menuItems.withText("Sign Out of \(server.accountId(UITestServer.bob))").firstMatch.waitToAppear().click()
         app.element("board: \(board.title)").waitToAppear("Not back on Alice's account after signing Bob out")
         accountMenu().click()
-        app.menuItems[ui("Sign Out of \(server.accountId(UITestServer.alice))")].waitToAppear().click()
+        app.menuItems.withText("Sign Out of \(server.accountId(UITestServer.alice))").firstMatch.waitToAppear().click()
         app.find(.button, "Sign in with browser").waitToAppear("Sign-in screen not shown after signing out")
 
         for account in accounts {

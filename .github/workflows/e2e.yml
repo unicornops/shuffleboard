@@ -190,9 +190,13 @@ jobs:
         run: scripts/e2e/test.sh ui
 
       # Also on pull requests, so a change to the UI can be looked at in the run's artifacts. In the pseudo-language,
-      # to look for text that is cut off.
+      # with Settings and About too, to look for text that is cut off, even if a UI test failed.
       - name: Screenshots
-        if: (strategy.job-index == 0 && matrix.profile == 'minimal') || matrix.pseudo
+        if: >-
+          (success() && strategy.job-index == 0 && matrix.profile == 'minimal' && !matrix.pseudo)
+          || (!cancelled() && matrix.pseudo)
+        env:
+          E2E_SCREENSHOTS_DIR: ${{ matrix.pseudo && 'build/screenshots-pseudo-language' || 'docs/screenshots' }}
         run: |
           # The runner's screen is small: keep the Dock from covering the bottom of the window.
           defaults write com.apple.dock autohide -bool true
@@ -213,7 +217,7 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: screenshots-pseudo-language
-          path: docs/screenshots
+          path: build/screenshots-pseudo-language
           if-no-files-found: warn
 
       # Also when a test only passed on another try (test.sh writes build/<kind>-retried.txt), to see why it failed.

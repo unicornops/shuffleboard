@@ -55,4 +55,4 @@ The double-length pseudo-language shows every translated string twice ("Save Sav
 - From the command line: `open Shuffleboard.app --args -NSDoubleLocalizedStrings YES`.
 - In CI: the daily end-to-end run runs the UI tests in the pseudo-language and keeps their screenshots as the `screenshots-pseudo-language` artifact. Run it by hand with Actions → End-to-end tests → Run workflow → profile **pseudo-language**. Locally, `TEST_RUNNER_E2E_PSEUDO_LANGUAGE=double scripts/e2e/test.sh ui` (and `… screenshots`).
 
-The UI tests find text through `ui("…")` in `UITestSupport.swift`, which doubles it in the pseudo-language, so they pass in both.
+A string with a value in it doubles its format, without the value in the first copy: "Sign Out of \(account)" shows as "Sign Out of @ Sign Out of alice@example.com". The UI tests find the app's text through `find(_:_:)`, `withText(_:)` and `textPredicate(_:in:)` in `UITestSupport.swift`, which match the text as it ends in either language, so they pass in both; find an element by its accessibility identifier where you can.
