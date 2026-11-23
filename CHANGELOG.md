@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.27.0](https://github.com/unicornops/shuffleboard/compare/v0.26.0...v0.27.0) (2026-11-23)
+
+
+### Features
+
+* **i18n:** prepare the app for translation ([#201](https://github.com/unicornops/shuffleboard/issues/201)) ([f8a39b7](https://github.com/unicornops/shuffleboard/commit/f8a39b70e4277f68a24ff6bd4883ea4fd6251c9e))
+
 ## [0.26.0](https://github.com/unicornops/shuffleboard/compare/v0.25.0...v0.26.0) (2026-11-23)
 
 
