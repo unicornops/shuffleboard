@@ -85,6 +85,7 @@ The screenshots are taken by the end-to-end UI tests from demo data (see [End-to
   | View → the first nine boards | ⌘1 … ⌘9 |
 
   Moving cards is off while the board is filtered, as dragging is.
+- **Shortcuts:** Shuffleboard's actions in the Shortcuts app: **Add Card** (to a list on a board, with a description and due date if you like; without a list, it goes in the board's first list), **Find Cards** (containing some words, due before a date, assigned to you, on one board; done cards only if you ask), **Mark Card as Done** (or not done), **Open Board** and **Open Card**. Find Cards gives the cards to the rest of the shortcut, with their title, description, due date, list and board. The actions use the account of the board or card you pick; Find Cards searches the account you're using in Shuffleboard unless you choose another. They work whether or not Shuffleboard is open (macOS starts it to run them), and say so plainly when you're signed out or the server can't be reached.
 - **Automatic updates** with [Sparkle](https://sparkle-project.org): Shuffleboard checks for new releases and installs them, or use **Shuffleboard → Check for Updates…**. Every update is verified against the app's EdDSA public key.
 - Built with **SwiftUI** and follows current macOS design (toolbars, sidebar, materials).
 
@@ -164,7 +165,7 @@ They never touch the real Keychain or a real server: `AppState` takes an in-memo
 
 The end-to-end tests run the app against a real Nextcloud server with the Deck app, so they catch the server behaving differently from what the unit tests assume. There are two kinds:
 
-- **API tests** (`ShuffleboardTests/Server*`): every Deck endpoint the app uses through `DeckAPI`, and `AppState`'s sign-in, multiple accounts, card moves and sign-out. One test signs in with Login Flow v2 for real, approving it on the server's own login and grant pages.
+- **API tests** (`ShuffleboardTests/Server*`): every Deck endpoint the app uses through `DeckAPI`, `AppState`'s sign-in, multiple accounts, card moves and sign-out, and the Shortcuts actions (Add Card, then Find Cards and Mark Card as Done on the card it added). One test signs in with Login Flow v2 for real, approving it on the server's own login and grant pages.
 - **UI tests** (`ShuffleboardUITests`, scheme `ShuffleboardUITests`): the app driven through its windows. They create lists and cards, drag a card to another list, edit a card, comment and mention someone, share a board, open boards in more windows, switch accounts and sign out, and keep showing a board read-only while the server is away (through Caddy's admin API on `localhost:2999`). Each test checks the result on the server, not just on screen.
 
 The scripts in `scripts/e2e/` start a throwaway server without Docker. Nextcloud runs on PHP's built-in server behind [Caddy](https://caddyserver.com), which serves it at `https://localhost:8443` with its own local CA, and uses SQLite. Everything lives in `build/e2e`. You need PHP 8.3 or 8.4 and Caddy (`brew install php@8.4 caddy`).
