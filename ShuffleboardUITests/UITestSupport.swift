@@ -349,13 +349,29 @@ extension XCUIElement {
         line: UInt = #line
     )
         -> XCUIElement {
+        let appeared = waitForExistence(timeout: timeout)
+        if !appeared {
+            keepScreenshot(named: "Screen when \(self) did not appear")
+        }
         XCTAssertTrue(
-            waitForExistence(timeout: timeout),
+            appeared,
             message.isEmpty ? "\(self) did not appear" : message,
             file: file,
             line: line
         )
         return self
+    }
+
+    /// Keeps a screenshot of the whole screen in the test results, even if the test passes on another try (#197):
+    /// the accessibility tree XCTest records on a failure doesn't show what the window looks like.
+    @MainActor
+    private func keepScreenshot(named name: String) {
+        XCTContext.runActivity(named: name) { activity in
+            let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+            attachment.name = name
+            attachment.lifetime = .keepAlways
+            activity.add(attachment)
+        }
     }
 
     /// Replaces a text field's contents.

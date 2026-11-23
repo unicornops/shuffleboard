@@ -116,6 +116,25 @@ jobs:
           ini-values: memory_limit=512M, apc.enable_cli=1
           tools: none
 
+      # setup-php carries on when an extension fails to install (#197): without APCu, the realistic server installs
+      # but answers every request with a 500. Try once more, then stop with the missing extensions named.
+      - name: Check PHP extensions
+        id: php-extensions
+        run: scripts/e2e/check-php.sh || echo "missing=true" >> "$GITHUB_OUTPUT"
+
+      - name: Set up PHP again (an extension is missing)
+        if: steps.php-extensions.outputs.missing == 'true'
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
+        with:
+          php-version: "8.4"
+          extensions: gd, intl, mbstring, pdo_sqlite, sqlite3, xml, zip, curl, bcmath, gmp, pdo_mysql, apcu, redis
+          ini-values: memory_limit=512M, apc.enable_cli=1
+          tools: none
+
+      - name: Check PHP extensions again
+        if: steps.php-extensions.outputs.missing == 'true'
+        run: scripts/e2e/check-php.sh
+
       - name: Install Caddy
         run: brew install caddy
 
@@ -178,14 +197,16 @@ jobs:
           path: docs/screenshots
           if-no-files-found: error
 
+      # Also when a test only passed on another try (test.sh writes build/<kind>-retried.txt), to see why it failed.
       - name: Upload server logs and test results
-        if: failure()
+        if: failure() || (!cancelled() && hashFiles('build/*-retried.txt') != '')
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: e2e-nextcloud-${{ matrix.nextcloud }}-${{ matrix.profile }}-${{ matrix.early_params || 'apps' }}
           path: |
             build/e2e/logs
             build/*.xcresult
+            build/*-retried.txt
           if-no-files-found: ignore
 
       - name: Stop the server
