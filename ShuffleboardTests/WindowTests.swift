@@ -38,11 +38,11 @@ final class WindowTests: XCTestCase {
         #"{"id": \#(id), "title": "B\#(id)", "archived": false, "labels": [{"id": 5, "title": "Red", "color": "ff0000"}]}"#
     }
 
-    /// Board `board` has lists `board`0 and `board`1 (and `board`2 with `extraList`); the first holds cards `board`00
-    /// and `board`01.
-    private nonisolated static func stacksJSON(board: Int, extraList: Bool = false) -> String {
-        let cards = [board * 100, board * 100 + 1].map {
-            #"{"id": \#($0), "title": "C\#($0)", "stackId": \#(board * 10), "order": \#($0 % 100)}"#
+    /// Board `board` has lists `board`0 and `board`1 (and `board`2 with `extraList`); the first holds `cards`, by
+    /// default cards `board`00 and `board`01.
+    private nonisolated static func stacksJSON(board: Int, extraList: Bool = false, cards ids: [Int]? = nil) -> String {
+        let cards = (ids ?? [board * 100, board * 100 + 1]).enumerated().map { order, id in
+            #"{"id": \#(id), "title": "C\#(id)", "stackId": \#(board * 10), "order": \#(order)}"#
         }
         let lists = (extraList ? 0 ... 2 : 0 ... 1).map { offset in
             #"{"id": \#(board * 10 + offset), "title": "L\#(offset)", "boardId": \#(board), "order": \#(offset), "#
@@ -174,6 +174,76 @@ final class WindowTests: XCTestCase {
             3,
             "on one that isn't there: the board opened last, now 3"
         )
+    }
+
+    // MARK: - Moving a card to another board (#204)
+
+    /// Card 100 dragged from board 1's first list to the top of board 2's: once `moved`, the server has it there. A
+    /// `reorder` that fails leaves the card where it was, and the lists can't be loaded after it.
+    private func stubMoveToBoardTwo(moved: Locked<Bool>, reorder: StubResponse) {
+        let failed = Locked(false)
+        StubURLProtocol.handler = { request in
+            if request.path.hasSuffix("/boards") {
+                return .json("[" + [1, 2, 3].map(Self.boardJSON).joined(separator: ",") + "]")
+            }
+            if request.path.hasSuffix("/reorder") {
+                if reorder.status == 200 {
+                    moved.withLock { $0 = true }
+                } else {
+                    failed.withLock { $0 = true }
+                }
+                return reorder
+            }
+            if failed.withLock({ $0 }) {
+                return .status(500)
+            }
+            let isMoved = moved.withLock { $0 }
+            if request.path.hasSuffix("/boards/1/stacks") {
+                return .json(Self.stacksJSON(board: 1, cards: isMoved ? [101] : nil))
+            }
+            if request.path.hasSuffix("/boards/2/stacks") {
+                return .json(Self.stacksJSON(board: 2, cards: isMoved ? [100, 200, 201] : nil))
+            }
+            return .json("{}")
+        }
+    }
+
+    func testACardMovedToAnotherBoardLeavesItsOldBoardStraightAway() async {
+        let moved = Locked(false)
+        stubMoveToBoardTwo(moved: moved, reorder: .json("[]", delay: 0.3))
+        let app = await makeApp()
+        let from = await openWindow(on: 1, in: app)
+        let to = await openWindow(on: 2, in: app)
+
+        // Dropped on board 2's window, as a card dragged in from board 1's window is.
+        let move = Task { await app.moveCard(boardId: 2, cardId: 100, fromStackId: 10, toStackId: 20, order: 0) }
+        await waitUntil { moved.withLock { $0 } }
+
+        XCTAssertEqual(from.stacks[0].activeCards.map(\.id), [101], "gone from the board it was dragged from")
+        XCTAssertEqual(to.stacks[0].activeCards.map(\.id), [100, 200, 201], "and on the one it was dropped on")
+        XCTAssertEqual(to.stacks[0].activeCards.first?.stackId, 20)
+        await move.value
+
+        XCTAssertEqual(from.stacks[0].activeCards.map(\.id), [101], "both boards reloaded from the server")
+        XCTAssertEqual(to.stacks[0].activeCards.map(\.id), [100, 200, 201])
+        XCTAssertEqual(app.cachedLists(of: 1)?.first?.activeCards.map(\.id), [101], "the copy on the Mac too")
+        XCTAssertNil(app.actionError)
+        let lines = StubURLProtocol.requests.map(\.line)
+        XCTAssertTrue(lines.contains("PUT /index.php/apps/deck/api/v1.0/boards/2/stacks/20/cards/100/reorder"))
+    }
+
+    func testAFailedMoveToAnotherBoardPutsTheCardBack() async {
+        stubMoveToBoardTwo(moved: Locked(false), reorder: .status(500))
+        let app = await makeApp()
+        let from = await openWindow(on: 1, in: app)
+        let to = await openWindow(on: 2, in: app)
+
+        await app.moveCard(boardId: 2, cardId: 100, fromStackId: 10, toStackId: 20, order: 0)
+
+        XCTAssertEqual(from.stacks[0].activeCards.map(\.id), [100, 101], "back, though the lists couldn't reload")
+        XCTAssertEqual(to.stacks[0].activeCards.map(\.id), [200, 201])
+        XCTAssertEqual(app.cachedLists(of: 1)?.first?.activeCards.map(\.id), [100, 101])
+        XCTAssertNotNil(app.actionError)
     }
 
     // MARK: - Things every window follows

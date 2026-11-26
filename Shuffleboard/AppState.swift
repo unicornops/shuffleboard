@@ -1011,16 +1011,22 @@ extension AppState {
             return false
         }
     }
+}
 
-    /// Moves a card to position `order` in `toStackId`, which may be the stack it is already in.
+// MARK: - Moving cards
+
+@MainActor
+extension AppState {
+    /// Moves a card to position `order` in `toStackId` on board `boardId`, which may be the stack it is already in.
+    ///
+    /// A card dragged in from another board's window (#204) leaves that board's lists straight away too, and both
+    /// boards are reloaded afterwards: the other board's lists would otherwise keep showing the card until the next
+    /// refresh. If the server refuses, the card goes back where it was.
     func reorderCard(boardId: Int, fromStackId: Int, cardId: Int, toStackId: Int, order: Int) async {
         guard let api = deckAPI else { return }
-        // Show the move straight away; the reload below (or after a failure) replaces it with the server's lists.
-        if let moved = lists[boardId]?.stacks.movingCard(cardId, toStack: toStackId, at: order) {
-            // Drop any refresh already in flight, so it can't put the card back where it was.
-            updateLists(of: boardId) { $0.generation += 1 }
-            setStacks(moved, of: boardId)
-        }
+        let fromBoardId = openBoardId(showingStack: fromStackId) ?? boardId
+        // Show the move straight away; the reloads below (or after a failure) replace it with the server's lists.
+        let before = showMove(of: cardId, from: fromBoardId, to: boardId, stack: toStackId, at: order)
         do {
             try await api.reorderCard(
                 boardId: boardId,
@@ -1028,10 +1034,15 @@ extension AppState {
                 order: order,
                 newStackId: toStackId
             )
-            await loadStacks(boardId: boardId)
         } catch {
             report(error)
-            await loadStacks(boardId: boardId)
+            // Undone here too, in case the lists can't be reloaded either (the server can't be reached).
+            if api === deckAPI {
+                undoMove(before)
+            }
+        }
+        for id in Set([boardId, fromBoardId]).sorted() {
+            await loadStacks(boardId: id)
         }
     }
 
@@ -1045,6 +1056,52 @@ extension AppState {
             toStackId: toStackId,
             order: order
         )
+    }
+
+    /// The open board with list `stackId`, if a window shows it.
+    private func openBoardId(showingStack stackId: Int) -> Int? {
+        lists.keys.sorted().first { id in lists[id]?.stacks.contains { $0.id == stackId } == true }
+    }
+
+    /// The lists of a board as they were before `showMove` changed them, and the load of them it started.
+    private struct ListsBeforeMove {
+        let stacks: [Stack]
+        let generation: Int
+    }
+
+    /// Shows card `cardId` at position `order` in list `stackId` of board `boardId`, taken off board `fromBoardId`,
+    /// ahead of the server. Returns the lists of each board it changed as they were, for `undoMove`.
+    private func showMove(
+        of cardId: Int,
+        from fromBoardId: Int,
+        to boardId: Int,
+        stack stackId: Int,
+        at order: Int
+    )
+        -> [Int: ListsBeforeMove] {
+        var changed: [Int: [Stack]] = [:]
+        if fromBoardId == boardId {
+            changed[boardId] = lists[boardId]?.stacks.movingCard(cardId, toStack: stackId, at: order)
+        } else if let (remaining, card) = lists[fromBoardId]?.stacks.removingCard(cardId) {
+            changed[fromBoardId] = remaining
+            changed[boardId] = lists[boardId]?.stacks.insertingCard(card, toStack: stackId, at: order)
+        }
+        var before: [Int: ListsBeforeMove] = [:]
+        for (id, stacks) in changed {
+            guard let entry = lists[id] else { continue }
+            // Drop any refresh already in flight, so it can't put the card back where it was.
+            updateLists(of: id) { $0.generation += 1 }
+            before[id] = ListsBeforeMove(stacks: entry.stacks, generation: entry.generation + 1)
+            setStacks(stacks, of: id)
+        }
+        return before
+    }
+
+    /// Puts back the lists `showMove` changed, unless they have been loaded again since.
+    private func undoMove(_ before: [Int: ListsBeforeMove]) {
+        for (id, saved) in before where lists[id]?.generation == saved.generation {
+            setStacks(saved.stacks, of: id)
+        }
     }
 }
 
