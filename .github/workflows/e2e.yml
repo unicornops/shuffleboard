@@ -193,7 +193,10 @@ jobs:
         if: matrix.profile == 'realistic'
         run: brew install nginx mariadb redis
 
+      # It normally takes 1 to 7 minutes. An app store install gives up after 90 seconds (Deck's is tried up to four
+      # times); anything else that hangs (#203: an app install once used up the job's hour) fails the job here.
       - name: Start Nextcloud with Deck
+        timeout-minutes: 20
         run: scripts/e2e/start-server.sh
 
       - name: Trust the test server's certificate

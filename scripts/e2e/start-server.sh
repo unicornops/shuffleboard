@@ -76,23 +76,58 @@ log() { printf '==> %s\n' "$*"; }
 # A missing extension doesn't stop the install (occ manages without APCu) but breaks every web request (#197).
 "$(dirname "$0")/check-php.sh" "$E2E_PROFILE"
 
-# Runs a command up to three times, waiting between tries: GitHub and the app store sometimes time out (#197).
+# A warning, which on GitHub Actions is also an annotation on the run: a download that only worked on another try
+# still shows up, without failing the job (#203).
+warn() {
+    echo "warning: $*" >&2
+    if [ -n "${GITHUB_ACTIONS:-}" ]; then
+        echo "::warning::$*"
+    fi
+}
+
+# Runs a command up to four times, waiting 30 s, 90 s and 3 minutes between tries: GitHub and the app store sometimes
+# time out, or answer 504 for more than a minute (#197, #203).
 retry() {
-    local attempt
-    for attempt in 1 2 3; do
+    local attempt waits=(30 90 180)
+    for attempt in 1 2 3 4; do
         "$@" && return 0
-        [ "$attempt" = 3 ] || {
-            echo "warning: try $attempt of 3 failed: $*" >&2
-            sleep $((attempt * 15))
-        }
+        [ "$attempt" = 4 ] && break
+        warn "try $attempt of 4 failed, trying again in ${waits[attempt - 1]} s: $*"
+        sleep "${waits[attempt - 1]}"
     done
     return 1
 }
 
-# Installs and enables an app from the app store. A try that downloaded the app but failed before enabling it leaves
-# the app in place, so install fails from then on: enable it instead.
+# Runs a command, stopping it if it takes longer than the given number of seconds, and then fails (exit status 124),
+# so a download that hangs becomes a failed try rather than using up the job's time (#203). macOS has no timeout(1):
+# perl runs the command, and on the alarm stops it (TERM, then KILL after 10 s) and waits for it to exit.
+with_time_limit() { # seconds command...
+    perl -e '
+        use POSIX ":sys_wait_h";
+        my $limit = shift;
+        my $pid = fork() // die "fork: $!\n";
+        if ($pid == 0) { exec { $ARGV[0] } @ARGV or die "exec $ARGV[0]: $!\n"; }
+        $SIG{ALRM} = sub {
+            print STDERR "Stopping after $limit s: @ARGV\n";
+            kill "TERM", $pid;
+            for (1 .. 10) { exit 124 if waitpid($pid, WNOHANG) == $pid; sleep 1; }
+            kill "KILL", $pid;
+            waitpid($pid, 0);
+            exit 124;
+        };
+        alarm $limit;
+        waitpid($pid, 0);
+        exit($? & 127 ? 128 + ($? & 127) : $? >> 8);
+    ' "$@"
+}
+
+# Installs and enables an app from the app store, giving up on a try after 90 seconds (#203: an install once hung
+# until the job timed out; one normally takes a few seconds). A try that downloaded the app but failed before enabling
+# it leaves the app in place, so install fails from then on: enable it instead.
+APP_INSTALL_TIME_LIMIT=90
 install_app() { # app
-    occ app:install "$1" || occ app:enable "$1"
+    with_time_limit "$APP_INSTALL_TIME_LIMIT" "${OCC[@]}" app:install "$1" ||
+        with_time_limit "$APP_INSTALL_TIME_LIMIT" "${OCC[@]}" app:enable "$1"
 }
 
 # Random passwords per server, kept for restarts; the server only listens on localhost.
@@ -109,7 +144,8 @@ fi
 . "$E2E_DIR/passwords"
 
 # occ needs APCu on the command line too once it's the memory cache.
-occ() { php -d apc.enable_cli=1 "$SERVER_DIR/occ" --no-interaction "$@"; }
+OCC=(php -d apc.enable_cli=1 "$SERVER_DIR/occ" --no-interaction)
+occ() { "${OCC[@]}" "$@"; }
 
 stop_pid() { # pid-file: stops the process and waits for it to exit
     local pid
@@ -148,7 +184,7 @@ esac
 
 if [ ! -f "$SERVER_DIR/occ" ]; then
     log "Downloading Nextcloud ($archive)"
-    curl -fsSL --retry 3 -o "$E2E_DIR/nextcloud.zip" "https://download.nextcloud.com/server/releases/$archive"
+    retry curl -fsSL --retry 3 -o "$E2E_DIR/nextcloud.zip" "https://download.nextcloud.com/server/releases/$archive"
     unzip -q "$E2E_DIR/nextcloud.zip" -d "$DOC_ROOT"
     rm "$E2E_DIR/nextcloud.zip"
 fi
@@ -253,7 +289,7 @@ if occ app:list --output=json | jq -e '.enabled.deck' >/dev/null; then
     log "Deck already enabled"
 elif [ -n "$DECK_VERSION" ]; then
     log "Installing Deck $DECK_VERSION from its release"
-    curl -fsSL --retry 3 -o "$E2E_DIR/deck.tar.gz" \
+    retry curl -fsSL --retry 3 -o "$E2E_DIR/deck.tar.gz" \
         "https://github.com/nextcloud-releases/deck/releases/download/v$DECK_VERSION/deck-v$DECK_VERSION.tar.gz"
     rm -rf "$SERVER_DIR/apps/deck"
     tar xzf "$E2E_DIR/deck.tar.gz" -C "$SERVER_DIR/apps"
@@ -286,10 +322,7 @@ if [ "$E2E_PROFILE" = realistic ]; then
         fi
         log "Installing $app"
         if ! install_app "$app" >"$LOG_DIR/app-$app.log" 2>&1; then
-            echo "warning: couldn't install $app: $(tail -1 "$LOG_DIR/app-$app.log")" >&2
-            if [ -n "${GITHUB_ACTIONS:-}" ]; then
-                echo "::warning::$app isn't installed on the realistic server: $(tail -1 "$LOG_DIR/app-$app.log")"
-            fi
+            warn "$app isn't installed on the realistic server: $(tail -1 "$LOG_DIR/app-$app.log")"
         fi
     done
 fi
