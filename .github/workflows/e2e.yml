@@ -112,16 +112,43 @@ jobs:
       E2E_ACTIVITY: ${{ matrix.activity }}
       # xcodebuild passes TEST_RUNNER_<NAME> to the UI tests as <NAME>; see PseudoLanguage in UITestSupport.swift.
       TEST_RUNNER_E2E_PSEUDO_LANGUAGE: ${{ matrix.pseudo }}
+      # 8.4 runs every Nextcloud major still supported (32 needs < 8.5, 35 needs >= 8.3).
+      PHP_VERSION: "8.4"
+      PHP_EXTENSIONS: gd, intl, mbstring, pdo_sqlite, sqlite3, xml, zip, curl, bcmath, gmp, pdo_mysql, apcu, redis
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      # setup-php builds APCu and Redis on every job, and that has failed after 13 minutes (#203): keep what it
+      # built. Saved by the first job, below, once it has every extension.
+      - name: Set up the PHP extension cache
+        id: php-extension-cache
+        uses: shivammathur/cache-extensions@0769e8b0c165c62888174c0fe66557ca1616ae45 # 1.15.12
+        env:
+          share-cache-across-jobs: true
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: ${{ env.PHP_EXTENSIONS }}
+          key: php-extensions-v1
+
+      - name: Restore the PHP extensions
+        id: php-extensions-restore
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ steps.php-extension-cache.outputs.dir }}
+          key: ${{ steps.php-extension-cache.outputs.key }}
+          restore-keys: ${{ steps.php-extension-cache.outputs.key }}
+
+      # setup-php sometimes fails outright (#203: "Could not setup PHP 8.4"), or takes many minutes to fail: then it's
+      # run again, below. It normally takes under 20 seconds.
       - name: Set up PHP
+        id: setup-php
+        continue-on-error: true
+        timeout-minutes: 5
         uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
         with:
-          # 8.4 runs every Nextcloud major still supported (32 needs < 8.5, 35 needs >= 8.3).
-          php-version: "8.4"
-          extensions: gd, intl, mbstring, pdo_sqlite, sqlite3, xml, zip, curl, bcmath, gmp, pdo_mysql, apcu, redis
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: ${{ env.PHP_EXTENSIONS }}
           ini-values: memory_limit=512M, apc.enable_cli=1
           tools: none
 
@@ -129,20 +156,35 @@ jobs:
       # but answers every request with a 500. Try once more, then stop with the missing extensions named.
       - name: Check PHP extensions
         id: php-extensions
-        run: scripts/e2e/check-php.sh || echo "missing=true" >> "$GITHUB_OUTPUT"
+        if: steps.setup-php.outcome == 'success'
+        run: |
+          if ! scripts/e2e/check-php.sh; then
+            echo "::warning::PHP is missing extensions; setting it up again"
+            echo "missing=true" >> "$GITHUB_OUTPUT"
+          fi
 
-      - name: Set up PHP again (an extension is missing)
-        if: steps.php-extensions.outputs.missing == 'true'
+      - name: Set up PHP again (it failed, or an extension is missing)
+        id: setup-php-again
+        if: steps.setup-php.outcome != 'success' || steps.php-extensions.outputs.missing == 'true'
+        timeout-minutes: 10
         uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
         with:
-          php-version: "8.4"
-          extensions: gd, intl, mbstring, pdo_sqlite, sqlite3, xml, zip, curl, bcmath, gmp, pdo_mysql, apcu, redis
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: ${{ env.PHP_EXTENSIONS }}
           ini-values: memory_limit=512M, apc.enable_cli=1
           tools: none
 
       - name: Check PHP extensions again
-        if: steps.php-extensions.outputs.missing == 'true'
+        if: steps.setup-php-again.outcome == 'success'
         run: scripts/e2e/check-php.sh
+
+      # Only one job saves, so the others don't race it to save the same key.
+      - name: Save the PHP extensions
+        if: strategy.job-index == 0 && steps.php-extensions-restore.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ steps.php-extension-cache.outputs.dir }}
+          key: ${{ steps.php-extension-cache.outputs.key }}
 
       - name: Install Caddy
         run: brew install caddy
