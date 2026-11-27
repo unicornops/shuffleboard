@@ -11,8 +11,9 @@ name: End-to-end tests
 # - Pull requests: the minimal server, on the newest Nextcloud major that Deck supports, with the newest Deck for it.
 # - Daily, and on demand: both profiles on every Nextcloud major still getting releases (up to the newest Deck
 #   supports), each with the newest Deck for it, plus the minimal server without the test app (the body's
-#   parameters win) or the Activity app on the newest. A failing scheduled run opens (or comments on) an issue, so a server release
-#   that breaks the app is noticed.
+#   parameters win) or the Activity app on the newest. When a scheduled run fails, e2e-rerun.yml runs its failed jobs
+#   again once, and if they fail again it opens (or comments on) an issue, so a server release that breaks the app is
+#   noticed, but a GitHub or app store outage on one runner isn't reported (#203).
 # - Daily, and on demand ("all" or "pseudo-language"): the UI tests again on the newest, minimal server, with the app in
 #   the double-length pseudo-language (#162), which shows every translated string twice, as long as a long
 #   translation would be. Its screenshots (artifact "screenshots-pseudo-language") show any layout that cuts text off.
@@ -111,16 +112,43 @@ jobs:
       E2E_ACTIVITY: ${{ matrix.activity }}
       # xcodebuild passes TEST_RUNNER_<NAME> to the UI tests as <NAME>; see PseudoLanguage in UITestSupport.swift.
       TEST_RUNNER_E2E_PSEUDO_LANGUAGE: ${{ matrix.pseudo }}
+      # 8.4 runs every Nextcloud major still supported (32 needs < 8.5, 35 needs >= 8.3).
+      PHP_VERSION: "8.4"
+      PHP_EXTENSIONS: gd, intl, mbstring, pdo_sqlite, sqlite3, xml, zip, curl, bcmath, gmp, pdo_mysql, apcu, redis
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      # setup-php builds APCu and Redis on every job, and that has failed after 13 minutes (#203): keep what it
+      # built. Saved by the first job, below, once it has every extension.
+      - name: Set up the PHP extension cache
+        id: php-extension-cache
+        uses: shivammathur/cache-extensions@0769e8b0c165c62888174c0fe66557ca1616ae45 # 1.15.12
+        env:
+          share-cache-across-jobs: true
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: ${{ env.PHP_EXTENSIONS }}
+          key: php-extensions-v1
+
+      - name: Restore the PHP extensions
+        id: php-extensions-restore
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ steps.php-extension-cache.outputs.dir }}
+          key: ${{ steps.php-extension-cache.outputs.key }}
+          restore-keys: ${{ steps.php-extension-cache.outputs.key }}
+
+      # setup-php sometimes fails outright (#203: "Could not setup PHP 8.4"), or takes many minutes to fail: then it's
+      # run again, below. It normally takes under 20 seconds.
       - name: Set up PHP
+        id: setup-php
+        continue-on-error: true
+        timeout-minutes: 5
         uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
         with:
-          # 8.4 runs every Nextcloud major still supported (32 needs < 8.5, 35 needs >= 8.3).
-          php-version: "8.4"
-          extensions: gd, intl, mbstring, pdo_sqlite, sqlite3, xml, zip, curl, bcmath, gmp, pdo_mysql, apcu, redis
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: ${{ env.PHP_EXTENSIONS }}
           ini-values: memory_limit=512M, apc.enable_cli=1
           tools: none
 
@@ -128,20 +156,35 @@ jobs:
       # but answers every request with a 500. Try once more, then stop with the missing extensions named.
       - name: Check PHP extensions
         id: php-extensions
-        run: scripts/e2e/check-php.sh || echo "missing=true" >> "$GITHUB_OUTPUT"
+        if: steps.setup-php.outcome == 'success'
+        run: |
+          if ! scripts/e2e/check-php.sh; then
+            echo "::warning::PHP is missing extensions; setting it up again"
+            echo "missing=true" >> "$GITHUB_OUTPUT"
+          fi
 
-      - name: Set up PHP again (an extension is missing)
-        if: steps.php-extensions.outputs.missing == 'true'
+      - name: Set up PHP again (it failed, or an extension is missing)
+        id: setup-php-again
+        if: steps.setup-php.outcome != 'success' || steps.php-extensions.outputs.missing == 'true'
+        timeout-minutes: 10
         uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
         with:
-          php-version: "8.4"
-          extensions: gd, intl, mbstring, pdo_sqlite, sqlite3, xml, zip, curl, bcmath, gmp, pdo_mysql, apcu, redis
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: ${{ env.PHP_EXTENSIONS }}
           ini-values: memory_limit=512M, apc.enable_cli=1
           tools: none
 
       - name: Check PHP extensions again
-        if: steps.php-extensions.outputs.missing == 'true'
+        if: steps.setup-php-again.outcome == 'success'
         run: scripts/e2e/check-php.sh
+
+      # Only one job saves, so the others don't race it to save the same key.
+      - name: Save the PHP extensions
+        if: strategy.job-index == 0 && steps.php-extensions-restore.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ steps.php-extension-cache.outputs.dir }}
+          key: ${{ steps.php-extension-cache.outputs.key }}
 
       - name: Install Caddy
         run: brew install caddy
@@ -150,7 +193,10 @@ jobs:
         if: matrix.profile == 'realistic'
         run: brew install nginx mariadb redis
 
+      # It normally takes 1 to 7 minutes. An app store install gives up after 90 seconds (Deck's is tried up to four
+      # times); anything else that hangs (#203: an app install once used up the job's hour) fails the job here.
       - name: Start Nextcloud with Deck
+        timeout-minutes: 20
         run: scripts/e2e/start-server.sh
 
       - name: Trust the test server's certificate
@@ -177,6 +223,31 @@ jobs:
           sudo xcode-select -s "$XCODE_PATH/Contents/Developer"
           xcodebuild -version
 
+      # The Swift packages (Sparkle) and the versions they resolved to, kept between runs so most runs don't fetch
+      # anything from GitHub (#203). test.sh puts them in build/SourcePackages. Saved by the first job, if it passes.
+      - name: Restore the Swift packages
+        id: swift-packages
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/Library/Caches/org.swift.swiftpm
+            build/SourcePackages
+            Shuffleboard.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
+          key: ${{ runner.os }}-swift-packages-${{ hashFiles('Shuffleboard.xcodeproj/project.pbxproj') }}
+          restore-keys: ${{ runner.os }}-swift-packages-
+
+      # GitHub sometimes refuses an unauthenticated clone of Sparkle with a 403 (#203). actions/checkout keeps its
+      # token in this repository's git config only; this gives it to git for every github.com fetch, so SwiftPM's
+      # clones are authenticated too (test.sh has xcodebuild use git). Removed again at the end of the job.
+      - name: Give git the job's token for GitHub
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          credentials=$(printf 'x-access-token:%s' "$GITHUB_TOKEN" | base64 | tr -d '\n')
+          echo "::add-mask::$credentials"
+          git config --global http.https://github.com/.extraheader "AUTHORIZATION: basic $credentials"
+
       - name: API tests (DeckAPI and AppState)
         # The pseudo-language changes only what the app shows.
         if: ${{ !matrix.pseudo }}
@@ -188,6 +259,16 @@ jobs:
 
       - name: UI tests
         run: scripts/e2e/test.sh ui
+
+      - name: Save the Swift packages
+        if: strategy.job-index == 0 && steps.swift-packages.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/Library/Caches/org.swift.swiftpm
+            build/SourcePackages
+            Shuffleboard.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
+          key: ${{ steps.swift-packages.outputs.cache-primary-key }}
 
       # Also on pull requests, so a change to the UI can be looked at in the run's artifacts. In the pseudo-language,
       # with Settings and About too, to look for text that is cut off, even if a UI test failed.
@@ -236,31 +317,9 @@ jobs:
         if: always()
         run: scripts/e2e/stop-server.sh
 
-  report:
-    name: Report scheduled failure
-    needs: e2e
-    if: failure() && github.event_name == 'schedule'
-    runs-on: ubuntu-latest
-    permissions:
-      issues: write
-    steps:
-      - name: Open or update the issue
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-        run: |
-          set -euo pipefail
-          title="End-to-end tests fail against a current Nextcloud or Deck release"
-          body="The scheduled end-to-end run failed: $RUN_URL
-
-          A new Nextcloud or Deck release may have changed something the app relies on. The run's artifacts have the server log (\`nextcloud.log\`) and the test results for each version that failed."
-          number=$(gh issue list --state open --search "in:title \"$title\"" --json number --jq '.[0].number // empty')
-          if [ -n "$number" ]; then
-            gh issue comment "$number" --body "Still failing: $RUN_URL"
-          else
-            gh issue create --title "$title" --body "$body"
-          fi
+      - name: Take the token back from git
+        if: always()
+        run: git config --global --unset-all http.https://github.com/.extraheader || true
 
   screenshots-pr:
     name: Open screenshots pull request

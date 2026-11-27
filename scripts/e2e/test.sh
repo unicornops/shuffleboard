@@ -41,22 +41,60 @@ case "$KIND" in
         ;;
 esac
 
-project=(-project Shuffleboard.xcodeproj -scheme "$scheme" -derivedDataPath build/E2EDerivedData)
+# The Swift packages go to build/SourcePackages, which the workflows cache (#203). git does the fetching
+# (-scmProvider system), not Xcode's own client, so it uses the credentials the workflow gives it in git's config.
+project=(-project Shuffleboard.xcodeproj -scheme "$scheme" -derivedDataPath build/E2EDerivedData
+    -clonedSourcePackagesDirPath build/SourcePackages -scmProvider system)
 
-# Fetch the Swift packages first, trying again if GitHub times out (Sparkle's binary comes from its releases), so a
-# download error isn't mistaken for a failing test (#197).
-for attempt in 1 2 3; do
-    xcodebuild "${project[@]}" -resolvePackageDependencies && break
-    [ "$attempt" = 3 ] && exit 1
-    echo "warning: couldn't fetch the Swift packages (try $attempt of 3)" >&2
-    sleep $((attempt * 15))
+# A warning, which on GitHub Actions is also an annotation on the run, so a download that only worked on another try
+# still shows up (#203).
+warn() {
+    echo "warning: $*" >&2
+    if [ -n "${GITHUB_ACTIONS:-}" ]; then
+        echo "::warning::$*"
+    fi
+}
+
+# git traces its HTTP requests and responses (headers only) to $git_trace. After a failed try, this shows them, so a
+# refusal (#203: a 403 on every try) tells whether GitHub was rate limiting. git leaves out the Authorization
+# header's value; perl removes it too, in case.
+git_trace="$PWD/build/git-trace.log"
+show_git_trace() {
+    if [ ! -s "$git_trace" ]; then
+        echo "No git trace: git didn't make any HTTP requests"
+        return
+    fi
+    echo "::group::git's HTTP requests and responses (headers)"
+    grep -iE '(=> Send header: (GET|POST) |=> Send header: authorization:|<= Recv header: (HTTP/|x-ratelimit-|retry-after|x-github-request-id|www-authenticate))' \
+        "$git_trace" | perl -pe 's/(authorization:\s*\S+\s+).*/$1<redacted>/i' || true
+    echo "::endgroup::"
+}
+
+# Fetch the Swift packages first, trying again if GitHub refuses or times out (#197, #203: Sparkle's repository and
+# its binary come from GitHub), waiting 30 s, 90 s and 3 minutes, so a download error isn't mistaken for a failing test.
+mkdir -p build
+waits=(30 90 180)
+for attempt in 1 2 3 4; do
+    rm -f "$git_trace"
+    if GIT_TRACE_CURL="$git_trace" GIT_TRACE_CURL_NO_DATA=1 GIT_TRACE_REDACT=1 \
+        xcodebuild "${project[@]}" -resolvePackageDependencies; then
+        # Whether git sent the workflow's credentials, without showing them.
+        requests=$(grep -cE '=> Send header: (GET|POST) ' "$git_trace" 2>/dev/null || true)
+        with_credentials=$(grep -ciE '=> Send header: authorization:' "$git_trace" 2>/dev/null || true)
+        echo "git made ${requests:-0} HTTP requests for the Swift packages, ${with_credentials:-0} with credentials"
+        break
+    fi
+    show_git_trace
+    [ "$attempt" = 4 ] && exit 1
+    warn "couldn't fetch the Swift packages (try $attempt of 4), trying again in ${waits[attempt - 1]} s"
+    sleep "${waits[attempt - 1]}"
 done
+rm -f "$git_trace"
 
 result="build/$KIND.xcresult"
 log="build/$KIND.log"
 retried="build/$KIND-retried.txt"
 rm -rf "$result" "$retried"
-mkdir -p build
 # Ad-hoc signed, as in PR validation: the tests run the app, and UI tests a runner app too. A test that hangs fails
 # after five minutes (the longest take under a minute), with a report, rather than using up the job's time.
 xcodebuild \

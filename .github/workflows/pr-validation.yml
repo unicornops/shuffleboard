@@ -154,6 +154,19 @@ jobs:
           done
           echo "✓ All Swift files have valid syntax"
 
+      # The Swift packages (Sparkle) and the versions they resolved to, shared with the end-to-end tests: the daily
+      # run on main saves them, so a pull request doesn't fetch them from GitHub (#203). The builds below put them in
+      # build/SourcePackages.
+      - name: Cache the Swift packages
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/Library/Caches/org.swift.swiftpm
+            build/SourcePackages
+            Shuffleboard.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
+          key: ${{ runner.os }}-swift-packages-${{ hashFiles('Shuffleboard.xcodeproj/project.pbxproj') }}
+          restore-keys: ${{ runner.os }}-swift-packages-
+
       - name: Build (Debug)
         id: debug-build
         run: |
@@ -162,6 +175,7 @@ jobs:
             -scheme Shuffleboard \
             -configuration Debug \
             -derivedDataPath build/DerivedData \
+            -clonedSourcePackagesDirPath build/SourcePackages \
             CURRENT_PROJECT_VERSION="${{ github.run_number }}" \
             GIT_COMMIT_HASH="${{ github.sha }}" \
             BUILD_REF="${{ github.sha }}" \
@@ -177,6 +191,7 @@ jobs:
             -scheme Shuffleboard \
             -destination 'platform=macOS' \
             -derivedDataPath build/TestDerivedData \
+            -clonedSourcePackagesDirPath build/SourcePackages \
             -resultBundlePath build/UnitTests.xcresult \
             CODE_SIGN_IDENTITY=- \
             CODE_SIGN_STYLE=Manual \
@@ -219,6 +234,7 @@ jobs:
             -scheme Shuffleboard \
             -configuration Release \
             -derivedDataPath build/DerivedData \
+            -clonedSourcePackagesDirPath build/SourcePackages \
             CURRENT_PROJECT_VERSION="${{ github.run_number }}" \
             GIT_COMMIT_HASH="${{ github.sha }}" \
             BUILD_REF="${{ github.sha }}" \
