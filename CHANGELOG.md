@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.27.1](https://github.com/unicornops/shuffleboard/compare/v0.27.0...v0.27.1) (2026-11-27)
+
+
+### Bug Fixes
+
+* **cards:** take a card off its old board when it is moved to another board ([#205](https://github.com/unicornops/shuffleboard/issues/205)) ([ef2d3a5](https://github.com/unicornops/shuffleboard/commit/ef2d3a58d8399814ed5f04c3110b94e1bdc159ea)), closes [#204](https://github.com/unicornops/shuffleboard/issues/204)
+
 ## [0.27.0](https://github.com/unicornops/shuffleboard/compare/v0.26.0...v0.27.0) (2026-11-23)
 
 
