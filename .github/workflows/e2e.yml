@@ -11,8 +11,9 @@ name: End-to-end tests
 # - Pull requests: the minimal server, on the newest Nextcloud major that Deck supports, with the newest Deck for it.
 # - Daily, and on demand: both profiles on every Nextcloud major still getting releases (up to the newest Deck
 #   supports), each with the newest Deck for it, plus the minimal server without the test app (the body's
-#   parameters win) or the Activity app on the newest. A failing scheduled run opens (or comments on) an issue, so a server release
-#   that breaks the app is noticed.
+#   parameters win) or the Activity app on the newest. When a scheduled run fails, e2e-rerun.yml runs its failed jobs
+#   again once, and if they fail again it opens (or comments on) an issue, so a server release that breaks the app is
+#   noticed, but a GitHub or app store outage on one runner isn't reported (#203).
 # - Daily, and on demand ("all" or "pseudo-language"): the UI tests again on the newest, minimal server, with the app in
 #   the double-length pseudo-language (#162), which shows every translated string twice, as long as a long
 #   translation would be. Its screenshots (artifact "screenshots-pseudo-language") show any layout that cuts text off.
@@ -236,31 +237,6 @@ jobs:
         if: always()
         run: scripts/e2e/stop-server.sh
 
-  report:
-    name: Report scheduled failure
-    needs: e2e
-    if: failure() && github.event_name == 'schedule'
-    runs-on: ubuntu-latest
-    permissions:
-      issues: write
-    steps:
-      - name: Open or update the issue
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-        run: |
-          set -euo pipefail
-          title="End-to-end tests fail against a current Nextcloud or Deck release"
-          body="The scheduled end-to-end run failed: $RUN_URL
-
-          A new Nextcloud or Deck release may have changed something the app relies on. The run's artifacts have the server log (\`nextcloud.log\`) and the test results for each version that failed."
-          number=$(gh issue list --state open --search "in:title \"$title\"" --json number --jq '.[0].number // empty')
-          if [ -n "$number" ]; then
-            gh issue comment "$number" --body "Still failing: $RUN_URL"
-          else
-            gh issue create --title "$title" --body "$body"
-          fi
 
   screenshots-pr:
     name: Open screenshots pull request

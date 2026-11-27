@@ -1,0 +1,99 @@
+name: End-to-end tests, re-run or report
+
+# When the daily end-to-end run fails, runs its failed jobs once more, and opens (or comments on) an issue only if
+# they fail again (#203). Almost every scheduled failure has been GitHub, the app store or the runner (a refused
+# clone, a 504, a hung download) on one of the ten jobs, not a Nextcloud or Deck release that breaks the app.
+#
+#   1. The scheduled run's first attempt fails (or is cancelled, or times out): "rerun" runs its failed jobs again
+#      and waits for them.
+#   2. They fail again, or they can't be run again: "report" opens the issue, or comments "Still failing" on it.
+#   3. Someone runs a failed scheduled run's jobs again by hand, and they fail: "report" too, as before.
+#
+# This waits for the re-run rather than acting on the re-run's own workflow_run event: GitHub may not send events
+# for a run that the workflow's token started again. A re-run that "rerun" started is left to "rerun" (its
+# triggering actor is github-actions[bot]), so nothing is reported twice.
+#
+# workflow_run only starts workflows from the default branch: a change here only takes effect once it's merged.
+
+on:
+  workflow_run:
+    workflows: [End-to-end tests]
+    types: [completed]
+
+permissions: {}
+
+jobs:
+  rerun:
+    name: Run the failed jobs again
+    if: >-
+      github.event.workflow_run.event == 'schedule'
+      && github.event.workflow_run.run_attempt == 1
+      && contains(fromJSON('["failure", "cancelled", "timed_out"]'), github.event.workflow_run.conclusion)
+    runs-on: ubuntu-latest
+    # The end-to-end jobs time out after an hour; leave time to wait for a macOS runner.
+    timeout-minutes: 150
+    permissions:
+      actions: write
+    outputs:
+      conclusion: ${{ steps.wait.outputs.conclusion }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RUN_ID: ${{ github.event.workflow_run.id }}
+    steps:
+      - name: Run the failed jobs again
+        run: gh run rerun "$RUN_ID" --failed
+
+      - name: Wait for them
+        id: wait
+        run: |
+          set -euo pipefail
+          while :; do
+            sleep 60
+            state=$(gh run view "$RUN_ID" --json attempt,status,conclusion --jq '"\(.attempt) \(.status) \(.conclusion)"')
+            read -r attempt status conclusion <<<"$state"
+            echo "Attempt $attempt: $status ${conclusion:-}"
+            if [ "$attempt" -gt 1 ] && [ "$status" = completed ]; then
+              break
+            fi
+          done
+          echo "conclusion=$conclusion" >> "$GITHUB_OUTPUT"
+
+  report:
+    name: Report scheduled failure
+    needs: rerun
+    # always(): also when "rerun" was skipped (case 3) or failed (case 2: the jobs couldn't be run again).
+    if: >-
+      always()
+      && github.event.workflow_run.event == 'schedule'
+      && (
+        (needs.rerun.result == 'success' && needs.rerun.outputs.conclusion != 'success')
+        || needs.rerun.result == 'failure'
+        || needs.rerun.result == 'cancelled'
+        || (
+          github.event.workflow_run.run_attempt > 1
+          && github.event.workflow_run.triggering_actor.login != 'github-actions[bot]'
+          && contains(fromJSON('["failure", "cancelled", "timed_out"]'), github.event.workflow_run.conclusion)
+        )
+      )
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Open or update the issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+        run: |
+          set -euo pipefail
+          title="End-to-end tests fail against a current Nextcloud or Deck release"
+          body="The scheduled end-to-end run failed, and failed again when its failed jobs were run again: $RUN_URL
+
+          A new Nextcloud or Deck release may have changed something the app relies on. The run's artifacts have the server log (\`nextcloud.log\`) and the test results for each version that failed."
+          number=$(gh issue list --state open --search "in:title \"$title\"" --json number --jq '.[0].number // empty')
+          if [ -n "$number" ]; then
+            gh issue comment "$number" --body "Still failing: $RUN_URL"
+          else
+            gh issue create --title "$title" --body "$body"
+          fi
