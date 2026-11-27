@@ -178,6 +178,31 @@ jobs:
           sudo xcode-select -s "$XCODE_PATH/Contents/Developer"
           xcodebuild -version
 
+      # The Swift packages (Sparkle) and the versions they resolved to, kept between runs so most runs don't fetch
+      # anything from GitHub (#203). test.sh puts them in build/SourcePackages. Saved by the first job, if it passes.
+      - name: Restore the Swift packages
+        id: swift-packages
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/Library/Caches/org.swift.swiftpm
+            build/SourcePackages
+            Shuffleboard.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
+          key: ${{ runner.os }}-swift-packages-${{ hashFiles('Shuffleboard.xcodeproj/project.pbxproj') }}
+          restore-keys: ${{ runner.os }}-swift-packages-
+
+      # GitHub sometimes refuses an unauthenticated clone of Sparkle with a 403 (#203). actions/checkout keeps its
+      # token in this repository's git config only; this gives it to git for every github.com fetch, so SwiftPM's
+      # clones are authenticated too (test.sh has xcodebuild use git). Removed again at the end of the job.
+      - name: Give git the job's token for GitHub
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          credentials=$(printf 'x-access-token:%s' "$GITHUB_TOKEN" | base64 | tr -d '\n')
+          echo "::add-mask::$credentials"
+          git config --global http.https://github.com/.extraheader "AUTHORIZATION: basic $credentials"
+
       - name: API tests (DeckAPI and AppState)
         # The pseudo-language changes only what the app shows.
         if: ${{ !matrix.pseudo }}
@@ -189,6 +214,16 @@ jobs:
 
       - name: UI tests
         run: scripts/e2e/test.sh ui
+
+      - name: Save the Swift packages
+        if: strategy.job-index == 0 && steps.swift-packages.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/Library/Caches/org.swift.swiftpm
+            build/SourcePackages
+            Shuffleboard.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
+          key: ${{ steps.swift-packages.outputs.cache-primary-key }}
 
       # Also on pull requests, so a change to the UI can be looked at in the run's artifacts. In the pseudo-language,
       # with Settings and About too, to look for text that is cut off, even if a UI test failed.
@@ -237,6 +272,9 @@ jobs:
         if: always()
         run: scripts/e2e/stop-server.sh
 
+      - name: Take the token back from git
+        if: always()
+        run: git config --global --unset-all http.https://github.com/.extraheader || true
 
   screenshots-pr:
     name: Open screenshots pull request
