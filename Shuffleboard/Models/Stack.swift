@@ -70,13 +70,28 @@ extension [Stack] {
     /// the way Deck renumbers them; `nil` if either isn't here. Shows a move straight away, before the server
     /// confirms it.
     func movingCard(_ cardId: Int, toStack stackId: Int, at index: Int) -> [Stack]? {
+        guard let (stacks, card) = removingCard(cardId) else { return nil }
+        return stacks.insertingCard(card, toStack: stackId, at: index)
+    }
+
+    /// These stacks without card `cardId`, and the card; `nil` if it isn't here. With `insertingCard`, shows a card
+    /// moved to another board straight away (#204).
+    func removingCard(_ cardId: Int) -> (stacks: [Stack], card: Card)? {
         guard let fromStack = firstIndex(where: { $0.cards?.contains { $0.id == cardId } == true }),
-              let toStack = firstIndex(where: { $0.id == stackId }),
-              var card = self[fromStack].cards?.first(where: { $0.id == cardId }) else { return nil }
+              let card = self[fromStack].cards?.first(where: { $0.id == cardId }) else { return nil }
         var stacks = self
         stacks[fromStack].cards?.removeAll { $0.id == cardId }
+        return (stacks, card)
+    }
+
+    /// These stacks with `card` put at position `index` among stack `stackId`'s active cards, numbered the way Deck
+    /// renumbers them; `nil` if the stack isn't here.
+    func insertingCard(_ card: Card, toStack stackId: Int, at index: Int) -> [Stack]? {
+        guard let toStack = firstIndex(where: { $0.id == stackId }) else { return nil }
+        var stacks = self
+        var card = card
         card.stackId = stackId
-        var active = stacks[toStack].activeCards
+        var active = stacks[toStack].activeCards.filter { $0.id != card.id }
         active.insert(card, at: Swift.min(Swift.max(index, 0), active.count))
         for position in active.indices {
             active[position].order = position
